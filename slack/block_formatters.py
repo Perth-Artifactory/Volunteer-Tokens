@@ -68,13 +68,9 @@ def app_home(
     tidyhq_cache: dict,
     volunteer_hours: dict,
     rewards: dict,
-    compress: bool = False,
 ) -> list:
     """Generate the blocks for the app home view for a specified user and return it as a list of blocks."""
     # Check if the user has a Taiga account
-
-    if compress:
-        logger.info(f"Compressing blocks for user {user_id}")
 
     block_list = []
     block_list = block_formatters.add_block(block_list, blocks.header)
@@ -204,11 +200,6 @@ def app_home(
             required_hours=reward,
             current_hours=total_hours,
         )
-
-    # High frequency users can end up going over the 100 block limit
-    at_block_limit = False
-    compressed_blocks = False
-    items_added = 0
 
     return block_list
 
