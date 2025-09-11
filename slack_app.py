@@ -69,7 +69,12 @@ try:
     with open("hours.json") as f:
         volunteer_hours = json.load(f)
 except FileNotFoundError:
-    setup_logger.warning("hours.json not found.")
+    setup_logger.warning(
+        "hours.json not found. Application will exit to prevent data loss."
+    )
+    setup_logger.warning(
+        "Create a blank ({}) hours.json file if this is the first run."
+    )
     sys.exit(1)
 
 logger.info(f"Loaded volunteer hours for {len(volunteer_hours)} volunteers")
