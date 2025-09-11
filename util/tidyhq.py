@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
 
+cache_file = "cache.json"
+
+
 def query(
     cat: str | int,
     config: dict,
@@ -217,7 +220,7 @@ def setup_cache(config: dict) -> dict[str, Any]:
 
     logger.debug("Writing cache to file")
     cache["time"] = datetime.datetime.now().timestamp()
-    with open("cache.json", "w") as f:
+    with open(cache_file, "w") as f:
         json.dump(cache, f)
 
     return cache
@@ -263,7 +266,7 @@ def setup_cache_from_tidyproxy(config: dict) -> dict[str, Any]:
     cache = r.json()
 
     # Write the cache to file
-    with open("cache.json", "w") as f:
+    with open(cache_file, "w") as f:
         json.dump(cache, f)
 
     return cache
@@ -308,7 +311,7 @@ def fresh_cache(
 
     # If we haven't been provided with a cache, or the provided cache is stale, try loading from file
     try:
-        with open("cache.json") as f:
+        with open(cache_file) as f:
             cache: dict = json.load(f)
     except FileNotFoundError:
         logger.debug("No cache file found")
