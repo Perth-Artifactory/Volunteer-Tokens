@@ -208,35 +208,35 @@ def app_home(
             current_hours=total_hours,
         )
 
-    # Reset block_list for modal version to exclude system explainer and admin tools
+    # Reset block_list for modal version to exclude admin tools and everything before it
     if modal_version:
-        # Create a new clean block_list with only the content we want for modal version
-        modal_block_list = []
+        # Simple approach: find the divider before rewards and keep from there
+        # Also keep the hours summary block
+        modal_blocks = []
         
-        # Keep the header (first block)
-        modal_block_list = block_formatters.add_block(modal_block_list, block_list[0])
-        
-        # Find and keep the hours summary block (after header, before potential admin section)
-        # Hours summary is the block with the hours_summary format
-        for i, block in enumerate(block_list[1:], 1):  # Skip header
+        # First, find and keep the hours summary block
+        for block in block_list:
             if (block["type"] == "section" and 
                 "text" in block and 
                 "text" in block["text"] and
-                ("total" in block["text"]["text"].lower() or 
-                 "hours" in block["text"]["text"].lower())):
-                modal_block_list = block_formatters.add_block(modal_block_list, block)
+                "total" in block["text"]["text"].lower()):
+                modal_blocks.append(block)
                 break
         
-        # Keep all blocks from the first divider onwards (rewards sections)
-        # Find the first divider which separates user info from rewards
-        divider_found = False
-        for i, block in enumerate(block_list):
-            if block["type"] == "divider" and not divider_found:
-                divider_found = True
-            if divider_found:
-                modal_block_list = block_formatters.add_block(modal_block_list, block)
+        # Then find the rewards section and keep everything from there
+        rewards_started = False
+        for block in block_list:
+            if (block["type"] == "header" and 
+                "text" in block and 
+                "text" in block["text"] and
+                "upcoming" in block["text"]["text"].lower() and
+                "rewards" in block["text"]["text"].lower()):
+                rewards_started = True
+            
+            if rewards_started:
+                modal_blocks.append(block)
         
-        block_list = modal_block_list
+        block_list = modal_blocks
 
     return block_list
 
