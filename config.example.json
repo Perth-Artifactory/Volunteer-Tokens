@@ -1,0 +1,17 @@
+{
+    "cache_expiry": 86400,
+    "tidyhq": {
+        "token": "TIDYHQ ACCESS TOKEN",
+        "ids": {},
+        "group_ids": {
+            "admin": [
+                123456
+            ]
+        }
+    },
+    "slack": {
+        "bot_token": "xoxb-",
+        "app_token": "xapp-",
+        "admin_channel": "CXXXXXX"
+    }
+}
