@@ -161,8 +161,6 @@ def app_home(
             current_hours=this_month_hours,
         )
 
-    block_list = block_formatters.add_block(block_list, blocks.divider)
-
     block_list = block_formatters.add_block(block_list, blocks.header)
     block_list = block_formatters.inject_text(
         block_list=block_list,
