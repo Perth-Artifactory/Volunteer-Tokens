@@ -212,6 +212,59 @@ def handle_hours_submission(ack, body):
             failed.append(volunteer)
             continue
 
+        # Figure out if this addition unlocked any rewards
+        # Monthly
+
+        # Get the hours for the month in question
+        current_hours = hours.get_specific_month(
+            tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours, month=date
+        )
+
+        for reward in rewards["monthly"]:
+            if current_hours < reward <= current_hours + hours_volunteered:
+                # Let the volunteer know
+                slack_misc.send_dm(
+                    slack_id=volunteer,
+                    slack_app=app,
+                    message=f"Congratulations! You've unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {date.strftime('%B')}!",
+                    blocks=block_formatters.reward_notification(
+                        reward_definition=rewards["monthly"][reward],
+                        hours=reward,
+                        period=date.strftime("%B"),
+                    ),
+                )
+                # Let the admin channel know
+                if "admin_channel" in config["slack"]:
+                    app.client.chat_postMessage(
+                        channel=config["slack"]["admin_channel"],
+                        text=f":tada: <@{volunteer}> has unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {date.strftime('%B')}!",
+                    )
+
+        # Cumulative
+        current_hours = hours.get_total(
+            tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+        )
+        for reward in rewards["cumulative"]:
+            if current_hours < reward <= current_hours + hours_volunteered:
+                # Let the volunteer know
+                slack_misc.send_dm(
+                    slack_id=volunteer,
+                    slack_app=app,
+                    message=f"Congratulations! You've unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
+                    blocks=block_formatters.reward_notification(
+                        reward_definition=rewards["cumulative"][reward],
+                        hours=reward,
+                        period="cumulative",
+                    ),
+                )
+
+                # Let the admin channel know
+                if "admin_channel" in config["slack"]:
+                    app.client.chat_postMessage(
+                        channel=config["slack"]["admin_channel"],
+                        text=f":tada: <@{volunteer}> has unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
+                    )
+
         volunteer_hours = hours.add_hours(
             tidyhq_id=tidyhq_id,
             volunteer_date=date,
@@ -239,30 +292,30 @@ def handle_hours_submission(ack, body):
         slack_misc.send_dm(
             slack_id=volunteer,
             slack_app=app,
-            message=f"<@{user_id}> added {volunteer_hours}h against your profile for {date.strftime('%B')}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded.",
+            message=f"<@{user_id}> added {hours_volunteered}h against your profile for {date.strftime('%B')}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded.",
         )
 
-    # Let the admin know how we went
+    # Let the admin channel know how we went
     if successful:
         user_list = ""
         for volunteer in successful:
-            user_list += ", <@{volunteer}>"
+            user_list += f", <@{volunteer}>"
         user_list = user_list[2:]
-        slack_misc.send_dm(
-            slack_id=user_id,
-            slack_app=app,
-            message=f"Added {hours_volunteered}h to {user_list}.",
+
+        app.client.chat_postMessage(
+            channel=config["slack"]["admin_channel"],
+            text=f":white_check_mark: <@{user_id}> added {hours_volunteered}h to {user_list} for {date.strftime('%B')}.",
         )
+
     if failed:
-        user_list = ""
         for volunteer in failed:
-            user_list += ", <@{volunteer}>"
-        user_list = user_list[2:]
-        slack_misc.send_dm(
-            slack_id=user_id,
-            slack_app=app,
-            message=f"Could not add {hours_volunteered}h to {user_list}, they're not registered on TidyHQ or they're not linked.",
-        )
+            m = app.client.chat_postMessage(
+                channel=config["slack"]["admin_channel"],
+                text=f":warning: Could not add {hours_volunteered}h to <@{volunteer}>, they're not registered on TidyHQ or they're not linked. (Attempted by <@{user_id}>)",
+            )
+            app.client.pins_add(
+                channel=config["slack"]["admin_channel"], timestamp=m["ts"]
+            )
 
 
 # The cron mode renders the app home for every user in the workspace and resets filters

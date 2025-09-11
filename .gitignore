@@ -205,7 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-util/hours.py
+
+
 cache.json
 hours.json
 config.json

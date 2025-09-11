@@ -193,6 +193,7 @@ def send_dm(
     unfurl_media: bool = False,
     username: str | None = None,
     photo: str | None = None,
+    pin: bool = False,
 ) -> bool:
     """
     Send a direct message to a user including conversation creation
@@ -232,6 +233,9 @@ def send_dm(
         logger.error(f"Failed to send message to {slack_id}")
         logger.error(m)
         return False
+
+    if pin:
+        slack_app.client.pins_add(channel=conversation_id, timestamp=m["ts"])
 
     logger.info(f"Sent message to {slack_id}")
     return True

@@ -256,12 +256,36 @@ def reward_tier(
         block_list[-1]["accessory"] = copy(blocks.accessory_image)
         block_list[-1]["accessory"]["image_url"] = reward_definition["image"]
 
-    if achieved:
+    if achieved and "claim" in reward_definition:
         block_list = block_formatters.add_block(block_list, blocks.context)
         block_list = block_formatters.inject_text(
             block_list=block_list,
             text=reward_definition["claim"],
         )
+
+    return block_list
+
+
+def reward_notification(reward_definition: dict, hours, period: str):
+    """Format a reward notification message."""
+
+    if period == "cumulative":
+        text = f":tada: You've unlocked the reward: *{reward_definition['title']}* for volunteering a total of {hours} hours!\nThank you for being a part of our community, we really appreciate your time and effort!"
+    else:
+        text = f":tada: You've unlocked the reward: *{reward_definition['title']}* for volunteering {hours} hours in {period}!"
+
+    block_list = []
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text=text,
+    )
+    block_list += reward_tier(
+        reward_definition=reward_definition,
+        required_hours=hours,
+        current_hours=hours,
+        active=True,
+    )
 
     return block_list
 
