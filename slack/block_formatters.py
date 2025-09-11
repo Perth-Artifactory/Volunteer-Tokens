@@ -92,12 +92,11 @@ def app_home(
 
         return block_list
 
-    if not modal_version:
-        block_list = block_formatters.add_block(block_list, blocks.text)
-        block_list = block_formatters.inject_text(
-            block_list=block_list,
-            text=strings.explainer,
-        )
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text=strings.explainer,
+    )
 
     # Get the user's total hours
     total_hours = hours.get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
@@ -126,7 +125,7 @@ def app_home(
         tidyhq_cache=tidyhq_cache,
     )  # type: ignore
 
-    if admin and not modal_version:
+    if admin:
         block_list = block_formatters.add_block(block_list, blocks.header)
         block_list = block_formatters.inject_text(
             block_list=block_list, text="Admin tools"
@@ -208,6 +207,36 @@ def app_home(
             required_hours=reward,
             current_hours=total_hours,
         )
+
+    # Reset block_list for modal version to exclude system explainer and admin tools
+    if modal_version:
+        # Create a new clean block_list with only the content we want for modal version
+        modal_block_list = []
+        
+        # Keep the header (first block)
+        modal_block_list = block_formatters.add_block(modal_block_list, block_list[0])
+        
+        # Find and keep the hours summary block (after header, before potential admin section)
+        # Hours summary is the block with the hours_summary format
+        for i, block in enumerate(block_list[1:], 1):  # Skip header
+            if (block["type"] == "section" and 
+                "text" in block and 
+                "text" in block["text"] and
+                ("total" in block["text"]["text"].lower() or 
+                 "hours" in block["text"]["text"].lower())):
+                modal_block_list = block_formatters.add_block(modal_block_list, block)
+                break
+        
+        # Keep all blocks from the first divider onwards (rewards sections)
+        # Find the first divider which separates user info from rewards
+        divider_found = False
+        for i, block in enumerate(block_list):
+            if block["type"] == "divider" and not divider_found:
+                divider_found = True
+            if divider_found:
+                modal_block_list = block_formatters.add_block(modal_block_list, block)
+        
+        block_list = modal_block_list
 
     return block_list
 
