@@ -365,14 +365,15 @@ def get_custom_field(
         logger.error("No field ID provided or found in config")
         return None
 
-    if not contact and contact_id:
-        for c in cache["contacts"]:
-            if str(c["id"]) == str(contact_id):
-                contact = c
-                break
-    elif not contact and not contact_id:
-        logger.error("No contact ID or contact provided")
-        return None
+    if not contact:
+        if contact_id:
+            for c in cache["contacts"]:
+                if str(c["id"]) == str(contact_id):
+                    contact = c
+                    break
+        else:
+            logger.error("No contact ID or contact provided")
+            return None
 
     if not contact:
         logger.error(f"Contact {contact_id} not found in cache or we failed to find it")
