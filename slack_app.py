@@ -357,7 +357,6 @@ if "--cron" in sys.argv:
                 user_id=user_id,
                 config=config,
                 tidyhq_cache=tidyhq_cache,
-                private_metadata=None,
                 volunteer_hours=volunteer_hours,
                 rewards=rewards,
             )
@@ -366,7 +365,6 @@ if "--cron" in sys.argv:
                 user_id=user_id,
                 config=config,
                 tidyhq_cache=tidyhq_cache,
-                private_metadata=None,
                 volunteer_hours=volunteer_hours,
                 rewards=rewards,
             )
@@ -413,8 +411,6 @@ if "--cron" in sys.argv:
 
     threads = []
 
-    private_metadata = None
-
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = []
         for user_id in updates:
@@ -427,7 +423,6 @@ if "--cron" in sys.argv:
                     slack_app=app,
                     block_list=updates[user_id],
                     user_id=user_id,
-                    private_metadata=private_metadata,
                     volunteer_hours=volunteer_hours,
                     rewards=rewards,
                 )

@@ -68,7 +68,6 @@ def app_home(
     tidyhq_cache: dict,
     volunteer_hours: dict,
     rewards: dict,
-    private_metadata: str | None,
     compress: bool = False,
 ) -> list:
     """Generate the blocks for the app home view for a specified user and return it as a list of blocks."""

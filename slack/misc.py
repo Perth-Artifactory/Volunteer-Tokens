@@ -112,7 +112,6 @@ def push_home(
     volunteer_hours: dict,
     rewards: dict,
     block_list: list | None = None,
-    private_metadata: str | None = None,
 ) -> bool:
     """Push the app home view to a specified user.
 
@@ -124,7 +123,6 @@ def push_home(
             user_id=user_id,
             config=config,
             tidyhq_cache=tidyhq_cache,
-            private_metadata=private_metadata,
             volunteer_hours=volunteer_hours,
             rewards=rewards,
         )
@@ -133,9 +131,6 @@ def push_home(
         "type": "home",
         "blocks": block_list,
     }
-
-    if private_metadata:
-        view["private_metadata"] = private_metadata
 
     try:
         slack_app.client.views_publish(user_id=user_id, view=view)
