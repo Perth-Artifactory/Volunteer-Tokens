@@ -18,7 +18,7 @@ This Slack app allows volunteers to track the amount of time they spend voluntee
 
 ## Running
 
-`python3.12 slack_app.py
+`python3.12 slack_app.py`
 
 ### Background tasks
 
