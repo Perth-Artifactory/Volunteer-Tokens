@@ -187,7 +187,6 @@ def send_dm(
     unfurl_links: bool = False,
     unfurl_media: bool = False,
     username: str | None = None,
-    photo: str | None = None,
     pin: bool = False,
 ) -> bool:
     """
@@ -204,9 +203,6 @@ def send_dm(
         logger.error(e)
         return False
 
-    # Photos are currently bugged for DMs
-    photo = None
-
     # Send the message
     try:
         m = slack_app.client.chat_postMessage(
@@ -216,7 +212,6 @@ def send_dm(
             unfurl_links=unfurl_links,
             unfurl_media=unfurl_media,
             username=username,
-            icon_url=photo,
         )
 
     except slack_sdk.errors.SlackApiError as e:  # type: ignore
