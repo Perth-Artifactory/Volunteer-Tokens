@@ -230,7 +230,7 @@ def reward_tier(
         lines[-1] += f" ({required_hours}h)"
     else:
         lines.append(
-            f"{emoji} {current_hours if not achieved else required_hours}h/{required_hours}h"
+            f"{emoji} {current_hours if not achieved else required_hours}/{required_hours}h"
         )
     if not achieved:
         lines[-1] += f" - {required_hours - current_hours}h to go!"
