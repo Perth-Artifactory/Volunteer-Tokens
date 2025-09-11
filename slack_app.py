@@ -347,46 +347,56 @@ def handle_user_view_submission(ack, body):
     ack()
     
     user_id = body["user"]["id"]
-    data = body["view"]["state"]["values"]
     
-    # Get the selected user
-    selected_user_id = data["user_select"]["user_select"]["selected_user"]
-    
-    logging.info(f"Admin {user_id} viewing as user {selected_user_id}")
-    
-    # Generate the app home for the selected user with modal_version=True
-    block_list = block_formatters.app_home(
-        user_id=selected_user_id,
-        config=config,
-        tidyhq_cache=tidyhq_cache,
-        volunteer_hours=volunteer_hours,
-        rewards=rewards,
-        modal_version=True,
-    )
-    
-    # Get user name for modal title
     try:
-        user_info = app.client.users_info(user=selected_user_id)
-        user_name = user_info["user"].get("real_name", user_info["user"]["profile"]["display_name"])
-        modal_title = f"View as {user_name}"
-        if len(modal_title) > 24:  # Slack modal title limit
-            modal_title = f"View as {user_info['user']['profile']['display_name']}"
-            if len(modal_title) > 24:
-                modal_title = "User Dashboard"
+        data = body["view"]["state"]["values"]
+        
+        # Get the selected user
+        selected_user_id = data["user_select"]["user_select"]["selected_user"]
+        
+        if not selected_user_id:
+            logging.error(f"No user selected by admin {user_id}")
+            return
+        
+        logging.info(f"Admin {user_id} viewing as user {selected_user_id}")
+        
+        # Generate the app home for the selected user with modal_version=True
+        block_list = block_formatters.app_home(
+            user_id=selected_user_id,
+            config=config,
+            tidyhq_cache=tidyhq_cache,
+            volunteer_hours=volunteer_hours,
+            rewards=rewards,
+            modal_version=True,
+        )
+        
+        # Get user name for modal title
+        try:
+            user_info = app.client.users_info(user=selected_user_id)
+            user_name = user_info["user"].get("real_name", user_info["user"]["profile"]["display_name"])
+            modal_title = f"View as {user_name}"
+            if len(modal_title) > 24:  # Slack modal title limit
+                modal_title = f"View as {user_info['user']['profile']['display_name']}"
+                if len(modal_title) > 24:
+                    modal_title = "User Dashboard"
+        except Exception as e:
+            logging.warning(f"Could not get user info for {selected_user_id}: {e}")
+            modal_title = "User Dashboard"
+        
+        # Open a new modal with the user's dashboard
+        app.client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "title": {"type": "plain_text", "text": modal_title},
+                "close": {"type": "plain_text", "text": "Close"},
+                "blocks": block_list,
+            },
+        )
+        
     except Exception as e:
-        logging.warning(f"Could not get user info for {selected_user_id}: {e}")
-        modal_title = "User Dashboard"
-    
-    # Open a new modal with the user's dashboard
-    app.client.views_open(
-        trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "title": {"type": "plain_text", "text": modal_title},
-            "close": {"type": "plain_text", "text": "Close"},
-            "blocks": block_list,
-        },
-    )
+        logging.error(f"Error in view as user modal: {e}")
+        # Could optionally show an error modal to the admin here
 
 
 # The cron mode renders the app home for every user in the workspace and resets filters
