@@ -1,7 +1,3 @@
-import phonenumbers
-import hashlib
-
-
 def calculate_circle_emoji(count: int | float, total: int | float) -> str:
     """Return the appropriate circle percentage emoji based on the count and total.
 
