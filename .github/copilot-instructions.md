@@ -9,7 +9,6 @@ The Volunteer Tokens system is a Python 3.12 Slack app that allows volunteers to
 ### Dependencies and Setup
 - **CRITICAL**: Application requires Python 3.12 exactly - has not been tested against other versions.
 - Install all dependencies: `pip3 install -r requirements.txt`
-- **MISSING DEPENDENCY**: Install additional required package: `pip3 install phonenumbers` (this is missing from requirements.txt but required)
 - **EXTERNAL API DEPENDENCY**: Application requires TidyHQ API access which cannot be tested locally without credentials. The app will exit with "Could not reach TidyHQ" error without proper API tokens.
 
 ### Required Configuration Files
@@ -48,7 +47,6 @@ Create these files before running the application:
 ```bash
 # Install Python dependencies
 pip3 install -r requirements.txt
-pip3 install phonenumbers  # Missing from requirements.txt
 
 # Create required config files  
 cp config.example.json config.json
@@ -67,7 +65,7 @@ python3.12 slack_app.py
 /home/runner/work/Volunteer-Tokens/Volunteer-Tokens/
 ├── slack_app.py              # Main application entry point
 ├── refresh_cache.py          # TidyHQ cache refresh utility
-├── requirements.txt          # Python dependencies (incomplete - missing phonenumbers)
+├── requirements.txt          # Python dependencies
 ├── config.example.json       # Configuration template
 ├── rewards.example.json      # Rewards structure template
 ├── hours.json               # Volunteer hours data (created at runtime)
@@ -133,9 +131,6 @@ python3.12 slack_app.py
 
 ### Common Issues and Solutions
 
-**"ModuleNotFoundError: No module named 'phonenumbers'"**:
-- Solution: `pip3 install phonenumbers` (missing from requirements.txt)
-
 **"config.json not found"**:
 - Solution: `cp config.example.json config.json`
 
@@ -148,7 +143,6 @@ python3.12 slack_app.py
 
 **Application exits immediately**:
 - Verify all configuration files exist (config.json, rewards.json, hours.json)  
-- Ensure phonenumbers package is installed
 - Check that Python 3.12 is being used
 
 ### Working with External Dependencies
