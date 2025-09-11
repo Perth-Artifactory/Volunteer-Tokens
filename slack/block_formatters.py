@@ -208,23 +208,12 @@ def app_home(
             current_hours=total_hours,
         )
 
-    # Reset block_list for modal version to exclude admin tools and everything before it
+    # For modal version, discard admin tools and everything before it
     if modal_version:
-        # Simple approach: find the divider before rewards and keep from there
-        # Also keep the hours summary block
         modal_blocks = []
-        
-        # First, find and keep the hours summary block
-        for block in block_list:
-            if (block["type"] == "section" and 
-                "text" in block and 
-                "text" in block["text"] and
-                "total" in block["text"]["text"].lower()):
-                modal_blocks.append(block)
-                break
-        
-        # Then find the rewards section and keep everything from there
         rewards_started = False
+        
+        # Find the rewards section and keep everything from there
         for block in block_list:
             if (block["type"] == "header" and 
                 "text" in block and 
