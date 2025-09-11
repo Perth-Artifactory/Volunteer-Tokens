@@ -1,0 +1,4 @@
+requests
+slack-bolt
+jsonschema
+mistune==2.0.5
