@@ -156,6 +156,10 @@ def app_home(
         block_list = block_formatters.add_block(block_list, blocks.actions)
         block_list[-1]["elements"] = admin_buttons
 
+    # For modal version, discard everything before rewards
+    if modal_version:
+        block_list = []
+
     block_list = block_formatters.add_block(block_list, blocks.divider)
     block_list = block_formatters.add_block(block_list, blocks.header)
     block_list = block_formatters.inject_text(
@@ -207,25 +211,6 @@ def app_home(
             required_hours=reward,
             current_hours=total_hours,
         )
-
-    # For modal version, discard admin tools and everything before it
-    if modal_version:
-        modal_blocks = []
-        rewards_started = False
-        
-        # Find the rewards section and keep everything from there
-        for block in block_list:
-            if (block["type"] == "header" and 
-                "text" in block and 
-                "text" in block["text"] and
-                "upcoming" in block["text"]["text"].lower() and
-                "rewards" in block["text"]["text"].lower()):
-                rewards_started = True
-            
-            if rewards_started:
-                modal_blocks.append(block)
-        
-        block_list = modal_blocks
 
     return block_list
 
