@@ -11,3 +11,4 @@ hours_summary = "Last month you volunteered for *{last_month}* hours. You have v
 no_active_rewards = "Unfortunately there are no active reward tiers recorded for you last month. (Remember: physical tokens are processed manually so may take a few days to appear here)"
 admin_explainer = "As an admin you have some extra tools available to you below. Please use them responsibly."
 add_hours_explainer = "Use this form to add hours to volunteers. Remember, if they also put a token in the box the time will be counted twice!"
+bulk_add_explainer = "Use this form to bulk add various numbers of hours to volunteers. Primarily intended for use when processing an event or the token box."

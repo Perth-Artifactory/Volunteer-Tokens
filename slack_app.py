@@ -199,6 +199,73 @@ def modal_view_as_user(ack, body):
     )
 
 
+@app.action("bulk_add_hours")
+def modal_bulk_add_hours(ack, body):
+    ack()
+
+    block_list = block_formatters.modal_bulk_add_hours()
+
+    app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "submit_bulk_hours",
+            "title": {"type": "plain_text", "text": "Bulk Add Volunteer Hours"},
+            "submit": {"type": "plain_text", "text": "Add"},
+            "close": {"type": "plain_text", "text": "Cancel"},
+            "blocks": block_list,
+        },
+    )
+
+
+@app.view("submit_bulk_hours")
+def handle_bulk_hours_submission(ack, body):
+    ack()
+
+    # Collate changes to make
+    count = 1
+    changes = {}
+
+    data = body["view"]["state"]["values"]
+    user_id = body["user"]["id"]
+
+    date_raw = data["date_select"]["date_select"]["selected_date"]
+    date = datetime.strptime(date_raw, "%Y-%m-%d")
+
+    while count <= 10:
+        volunteers = data[f"volunteer_select_{count}"][f"volunteer_select_{count}"][
+            "selected_users"
+        ]
+        if not volunteers:
+            count += 1
+            continue
+        hours_volunteered = int(
+            data[f"hours_input_{count}"][f"hours_input_{count}"].get("value", 0)
+        )
+        if not hours_volunteered:
+            count += 1
+            continue
+
+        for volunteer in volunteers:
+            if volunteer not in changes:
+                changes[volunteer] = 0
+
+            changes[volunteer] += hours_volunteered
+
+        count += 1
+
+    hours.add_hours_with_notifications(
+        changes=changes,
+        tidyhq_cache=tidyhq_cache,
+        volunteer_hours=volunteer_hours,
+        volunteer_date=date,
+        rewards=rewards,
+        config=config,
+        app=app,
+        user_id=user_id,
+    )
+
+
 @app.view("submit_hours")
 def handle_hours_submission(ack, body):
     ack()
@@ -219,124 +286,21 @@ def handle_hours_submission(ack, body):
         f"Adding {hours_volunteered} hours on {date} for {', '.join(volunteers)} from {user_id}"
     )
 
-    successful = []
-    failed = []
-
+    # Format data in a way hours.add_hours_with_notifications can use
+    changes = {}
     for volunteer in volunteers:
-        tidyhq_id = tidyhq.map_slack_to_tidyhq(
-            tidyhq_cache=tidyhq_cache, config=config, slack_id=volunteer
-        )
-        if not tidyhq_id:
-            logging.warning(f"Could not find TidyHQ ID for Slack user {volunteer}")
+        changes[volunteer] = hours_volunteered
 
-            # Let the admin know
-            failed.append(volunteer)
-            continue
-
-        # Figure out if this addition unlocked any rewards
-        # Monthly
-
-        # Get the hours for the month in question
-        current_hours = hours.get_specific_month(
-            tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours, month=date
-        )
-
-        for reward in rewards["monthly"]:
-            if current_hours < reward <= current_hours + hours_volunteered:
-                # Let the volunteer know
-                slack_misc.send_dm(
-                    slack_id=volunteer,
-                    slack_app=app,
-                    message=f"Congratulations! You've unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {date.strftime('%B')}!",
-                    blocks=block_formatters.reward_notification(
-                        reward_definition=rewards["monthly"][reward],
-                        hours=reward,
-                        period=date.strftime("%B"),
-                    ),
-                )
-                # Let the admin channel know
-                if "admin_channel" in config["slack"]:
-                    app.client.chat_postMessage(
-                        channel=config["slack"]["admin_channel"],
-                        text=f":tada: <@{volunteer}> has unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {date.strftime('%B')}!",
-                    )
-
-        # Cumulative
-        current_hours = hours.get_total(
-            tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
-        )
-        for reward in rewards["cumulative"]:
-            if current_hours < reward <= current_hours + hours_volunteered:
-                # Let the volunteer know
-                slack_misc.send_dm(
-                    slack_id=volunteer,
-                    slack_app=app,
-                    message=f"Congratulations! You've unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
-                    blocks=block_formatters.reward_notification(
-                        reward_definition=rewards["cumulative"][reward],
-                        hours=reward,
-                        period="cumulative",
-                    ),
-                )
-
-                # Let the admin channel know
-                if "admin_channel" in config["slack"]:
-                    app.client.chat_postMessage(
-                        channel=config["slack"]["admin_channel"],
-                        text=f":tada: <@{volunteer}> has unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
-                    )
-
-        volunteer_hours = hours.add_hours(
-            tidyhq_id=tidyhq_id,
-            volunteer_date=date,
-            hours_volunteered=hours_volunteered,
-            volunteer_hours=volunteer_hours,
-            tidyhq_cache=tidyhq_cache,
-        )
-
-        logging.info(
-            f"Added {hours_volunteered} hours on {date} for TidyHQ ID {tidyhq_id} (Slack ID {volunteer})"
-        )
-
-        slack_misc.push_home(
-            user_id=volunteer,
-            config=config,
-            tidyhq_cache=tidyhq_cache,
-            slack_app=app,
-            volunteer_hours=volunteer_hours,
-            rewards=rewards,
-        )
-
-        successful.append(volunteer)
-
-        # Let the volunteer know
-        slack_misc.send_dm(
-            slack_id=volunteer,
-            slack_app=app,
-            message=f"<@{user_id}> added {hours_volunteered}h against your profile for {date.strftime('%B')}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded.",
-        )
-
-    # Let the admin channel know how we went
-    if successful:
-        user_list = ""
-        for volunteer in successful:
-            user_list += f", <@{volunteer}>"
-        user_list = user_list[2:]
-
-        app.client.chat_postMessage(
-            channel=config["slack"]["admin_channel"],
-            text=f":white_check_mark: <@{user_id}> added {hours_volunteered}h to {user_list} for {date.strftime('%B')}.",
-        )
-
-    if failed:
-        for volunteer in failed:
-            m = app.client.chat_postMessage(
-                channel=config["slack"]["admin_channel"],
-                text=f":warning: Could not add {hours_volunteered}h to <@{volunteer}>, they're not registered on TidyHQ or they're not linked. (Attempted by <@{user_id}>)",
-            )
-            app.client.pins_add(
-                channel=config["slack"]["admin_channel"], timestamp=m["ts"]
-            )
+    hours.add_hours_with_notifications(
+        changes=changes,
+        tidyhq_cache=tidyhq_cache,
+        volunteer_hours=volunteer_hours,
+        volunteer_date=date,
+        rewards=rewards,
+        config=config,
+        app=app,
+        user_id=user_id,
+    )
 
 
 @app.view("view_as_user")

@@ -145,6 +145,14 @@ def app_home(
         admin_buttons[-1]["value"] = tidyhq_id
         admin_buttons[-1]["style"] = "primary"
 
+        # Add bulk add button
+        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
+        admin_buttons = block_formatters.inject_text(
+            block_list=admin_buttons, text="Bulk add hours"
+        )
+        admin_buttons[-1]["action_id"] = "bulk_add_hours"
+        admin_buttons[-1]["value"] = tidyhq_id
+
         # Add "View as user" button
         admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
         admin_buttons = block_formatters.inject_text(
@@ -365,5 +373,56 @@ def modal_view_as_user():
     user_select["block_id"] = "user_select"
 
     block_list = block_formatters.add_block(block_list, user_select)
+
+    return block_list
+
+
+def modal_bulk_add_hours():
+    """Generate a modal to bulk add hours from up to 10 users at a time."""
+
+    block_list = []
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text=strings.bulk_add_explainer,
+    )
+
+    count = 1
+
+    # add date select
+    block_list = block_formatters.add_block(block_list, blocks.date_select)
+    block_list[-1]["label"]["text"] = "Date of volunteering"
+    block_list[-1]["element"]["action_id"] = "date_select"
+    block_list[-1]["block_id"] = "date_select"
+    block_list[-1]["element"]["initial_date"] = datetime.now().strftime("%Y-%m-%d")
+    block_list[-1]["element"].pop("placeholder")
+    block_list[-1]["hint"] = copy(blocks.base_text)
+    block_list[-1]["hint"]["text"] = (
+        "We only actually store the month and year of volunteering, the exact day is discarded"
+    )
+
+    while count <= 10:
+        block_list = block_formatters.add_block(block_list, blocks.divider)
+        block_list = block_formatters.add_block(block_list, blocks.multi_users_select)
+        block_list[-1]["label"]["text"] = "Select volunteers"
+        block_list[-1]["element"]["action_id"] = f"volunteer_select_{count}"
+        block_list[-1]["block_id"] = f"volunteer_select_{count}"
+        block_list[-1]["element"].pop("placeholder")
+        block_list[-1]["optional"] = True
+
+        block_list = block_formatters.add_block(block_list, blocks.number_input)
+        block_list[-1]["label"]["text"] = "Number of hours volunteered"
+        block_list[-1]["element"]["action_id"] = f"hours_input_{count}"
+        block_list[-1]["block_id"] = f"hours_input_{count}"
+        block_list[-1]["element"]["min_value"] = "0"
+        block_list[-1]["element"]["max_value"] = "100"
+        block_list[-1]["hint"] = copy(blocks.base_text)
+        block_list[-1]["hint"]["text"] = (
+            "These hours will be added to *all* selected volunteers in this section"
+        )
+        block_list[-1]["optional"] = True
+
+        count += 1
 
     return block_list
