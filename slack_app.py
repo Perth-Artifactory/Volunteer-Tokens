@@ -1,9 +1,6 @@
-import importlib
 import json
 import logging
-import re
 import sys
-import time
 from copy import deepcopy as copy
 from datetime import datetime
 from pprint import pprint
@@ -168,7 +165,7 @@ def handle_app_home_opened_events(body: dict) -> None:
 def modal_add_hours(ack, body):
     ack()
 
-    blocks = block_formatters.modal_add_hours()
+    block_list = block_formatters.modal_add_hours()
 
     app.client.views_open(
         trigger_id=body["trigger_id"],
@@ -178,7 +175,26 @@ def modal_add_hours(ack, body):
             "title": {"type": "plain_text", "text": "Add Volunteer Hours"},
             "submit": {"type": "plain_text", "text": "Add"},
             "close": {"type": "plain_text", "text": "Cancel"},
-            "blocks": blocks,
+            "blocks": block_list,
+        },
+    )
+
+
+@app.action("view_as_user")
+def modal_view_as_user(ack, body):
+    ack()
+
+    block_list = block_formatters.modal_view_as_user()
+
+    app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "view_as_user",
+            "title": {"type": "plain_text", "text": "View as User"},
+            "submit": {"type": "plain_text", "text": "View"},
+            "close": {"type": "plain_text", "text": "Cancel"},
+            "blocks": block_list,
         },
     )
 
@@ -321,6 +337,56 @@ def handle_hours_submission(ack, body):
             app.client.pins_add(
                 channel=config["slack"]["admin_channel"], timestamp=m["ts"]
             )
+
+
+@app.view("view_as_user")
+def handle_view_as_user_selection(ack, body):
+    ack()
+
+    user_id = body["user"]["id"]
+
+    try:
+        data = body["view"]["state"]["values"]
+
+        # Get the selected user
+        selected_user_id = data["user_select"]["user_select"]["selected_user"]
+
+        if not selected_user_id:
+            logging.error(f"No user selected by admin {user_id}")
+            return
+
+        logging.info(f"Admin {user_id} viewing as user {selected_user_id}")
+
+        # Generate the modal blocks for the selected user
+        block_list = block_formatters.app_home(
+            user_id=selected_user_id,
+            config=config,
+            tidyhq_cache=tidyhq_cache,
+            volunteer_hours=volunteer_hours,
+            rewards=rewards,
+            modal_version=True,
+        )
+
+        # Get user name for modal title
+        user_name = slack_misc.name_mapper(slack_id=selected_user_id, slack_app=app)
+
+        # Trim the title to 24 characters if it's too long
+        if len(user_name) > 24:
+            user_name = user_name[:21] + "..."
+
+        # Open a new modal with the user's dashboard
+        app.client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "title": {"type": "plain_text", "text": user_name},
+                "close": {"type": "plain_text", "text": "Close"},
+                "blocks": block_list,
+            },
+        )
+
+    except Exception as e:
+        logging.error(f"Error in view as user modal: {e}")
 
 
 # The cron mode renders the app home for every user in the workspace and resets filters

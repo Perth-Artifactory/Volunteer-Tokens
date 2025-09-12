@@ -68,6 +68,7 @@ def app_home(
     tidyhq_cache: dict,
     volunteer_hours: dict,
     rewards: dict,
+    modal_version: bool = False,
 ) -> list:
     """Generate the blocks for the app home view for a specified user and return it as a list of blocks."""
     # Check if the user has a Taiga account
@@ -144,10 +145,23 @@ def app_home(
         admin_buttons[-1]["value"] = tidyhq_id
         admin_buttons[-1]["style"] = "primary"
 
+        # Add "View as user" button
+        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
+        admin_buttons = block_formatters.inject_text(
+            block_list=admin_buttons, text="View as user"
+        )
+        admin_buttons[-1]["action_id"] = "view_as_user"
+        admin_buttons[-1]["value"] = tidyhq_id
+
         block_list = block_formatters.add_block(block_list, blocks.actions)
         block_list[-1]["elements"] = admin_buttons
 
     block_list = block_formatters.add_block(block_list, blocks.divider)
+
+    # For modal version, discard everything before rewards
+    if modal_version:
+        block_list = []
+
     block_list = block_formatters.add_block(block_list, blocks.header)
     block_list = block_formatters.inject_text(
         block_list=block_list,
@@ -323,5 +337,33 @@ def modal_add_hours():
     block_list[-1]["hint"]["text"] = (
         "These hours will be added to *all* selected volunteers"
     )
+
+    return block_list
+
+
+def modal_view_as_user():
+    """Generate a modal to select a user to view as."""
+
+    block_list = []
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text="Select a user to view their volunteer dashboard:",
+    )
+
+    # User select (single user)
+    from slack.blocks import base_input
+
+    user_select = copy(base_input)
+    user_select["element"] = {
+        "type": "users_select",
+        "placeholder": {"type": "plain_text", "text": "Select a user", "emoji": True},
+        "action_id": "user_select",
+    }
+    user_select["label"]["text"] = "User"
+    user_select["block_id"] = "user_select"
+
+    block_list = block_formatters.add_block(block_list, user_select)
 
     return block_list
