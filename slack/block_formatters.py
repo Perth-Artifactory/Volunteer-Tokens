@@ -156,11 +156,12 @@ def app_home(
         block_list = block_formatters.add_block(block_list, blocks.actions)
         block_list[-1]["elements"] = admin_buttons
 
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+
     # For modal version, discard everything before rewards
     if modal_version:
         block_list = []
 
-    block_list = block_formatters.add_block(block_list, blocks.divider)
     block_list = block_formatters.add_block(block_list, blocks.header)
     block_list = block_formatters.inject_text(
         block_list=block_list,
@@ -353,15 +354,16 @@ def modal_view_as_user():
 
     # User select (single user)
     from slack.blocks import base_input
+
     user_select = copy(base_input)
     user_select["element"] = {
         "type": "users_select",
         "placeholder": {"type": "plain_text", "text": "Select a user", "emoji": True},
-        "action_id": "user_select"
+        "action_id": "user_select",
     }
     user_select["label"]["text"] = "User"
     user_select["block_id"] = "user_select"
-    
+
     block_list = block_formatters.add_block(block_list, user_select)
 
     return block_list
