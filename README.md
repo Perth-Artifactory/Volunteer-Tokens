@@ -6,7 +6,7 @@ This Slack app allows volunteers to track the amount of time they spend voluntee
 
 * Application is written for Python3.12 and hasn't been tested against other versions
 * Install requirements from requirements.txt
-* Create Slack app using `rsc/manfiest.json`
+* Create Slack app using `rsc/manifest.json`
 * Add emoji from `rsc` to Slack workspace
 * Create `config.json` based on `config.example.json`
 * Create `rewards.json` based on `rewards.example.json`
