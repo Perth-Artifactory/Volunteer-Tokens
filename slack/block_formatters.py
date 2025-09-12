@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pprint import pprint
 
 from editable_resources import strings
-from slack import blocks, block_formatters
+from slack import blocks, block_formatters, misc as slack_misc
 from util import tidyhq, misc, hours
 
 # Set up logging
@@ -199,6 +199,10 @@ def app_home(
             current_hours=total_hours,
         )
 
+    # Validate the block list before returning
+    if not slack_misc.validate(block_list, surface="home"):
+        logger.error("Generated app_home blocks failed validation")
+
     return block_list
 
 
@@ -251,6 +255,10 @@ def reward_tier(
             text=reward_definition["claim"],
         )
 
+    # Validate the block list before returning
+    if not slack_misc.validate(block_list, surface="message"):
+        logger.error("Generated reward_tier blocks failed validation")
+
     return block_list
 
 
@@ -274,6 +282,10 @@ def reward_notification(reward_definition: dict, hours, period: str):
         current_hours=hours,
         active=True,
     )
+
+    # Validate the block list before returning
+    if not slack_misc.validate(block_list, surface="message"):
+        logger.error("Generated reward_notification blocks failed validation")
 
     return block_list
 
@@ -323,5 +335,9 @@ def modal_add_hours():
     block_list[-1]["hint"]["text"] = (
         "These hours will be added to *all* selected volunteers"
     )
+
+    # Validate the block list before returning
+    if not slack_misc.validate(block_list, surface="modal"):
+        logger.error("Generated modal_add_hours blocks failed validation")
 
     return block_list
