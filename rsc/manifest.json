@@ -26,6 +26,7 @@
                 "mpim:write",
                 "team:read",
                 "users.profile:read",
+                "users:read",
                 "pins:write",
                 "pins:read"
             ]
