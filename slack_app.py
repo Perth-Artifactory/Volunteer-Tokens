@@ -190,7 +190,7 @@ def modal_view_as_user(ack, body):
         trigger_id=body["trigger_id"],
         view={
             "type": "modal",
-            "callback_id": "show_user_view",
+            "callback_id": "view_as_user",
             "title": {"type": "plain_text", "text": "View as User"},
             "submit": {"type": "plain_text", "text": "View"},
             "close": {"type": "plain_text", "text": "Cancel"},
@@ -339,8 +339,8 @@ def handle_hours_submission(ack, body):
             )
 
 
-@app.view("show_user_view")
-def handle_user_view_submission(ack, body):
+@app.view("view_as_user")
+def handle_view_as_user_selection(ack, body):
     ack()
 
     user_id = body["user"]["id"]
@@ -357,7 +357,7 @@ def handle_user_view_submission(ack, body):
 
         logging.info(f"Admin {user_id} viewing as user {selected_user_id}")
 
-        # Generate the app home for the selected user with modal_version=True
+        # Generate the modal blocks for the selected user
         block_list = block_formatters.app_home(
             user_id=selected_user_id,
             config=config,
@@ -387,7 +387,6 @@ def handle_user_view_submission(ack, body):
 
     except Exception as e:
         logging.error(f"Error in view as user modal: {e}")
-        # Could optionally show an error modal to the admin here
 
 
 # The cron mode renders the app home for every user in the workspace and resets filters
