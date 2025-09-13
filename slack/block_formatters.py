@@ -161,6 +161,14 @@ def app_home(
         admin_buttons[-1]["action_id"] = "view_as_user"
         admin_buttons[-1]["value"] = tidyhq_id
 
+        # Add "View Statistics" button
+        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
+        admin_buttons = block_formatters.inject_text(
+            block_list=admin_buttons, text="Statistics"
+        )
+        admin_buttons[-1]["action_id"] = "statistics"
+        admin_buttons[-1]["value"] = tidyhq_id
+
         block_list = block_formatters.add_block(block_list, blocks.actions)
         block_list[-1]["elements"] = admin_buttons
 
@@ -424,5 +432,126 @@ def modal_bulk_add_hours():
         block_list[-1]["optional"] = True
 
         count += 1
+
+    return block_list
+
+
+def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
+    """Generate a modal showing overall volunteer statistics."""
+
+    from datetime import datetime
+    from util import hours as hours_util
+
+    block_list = []
+
+    # Get statistics
+    stats = hours_util.get_overall_statistics(
+        volunteer_hours, config=config, tidyhq_cache=tidyhq_cache
+    )
+    top_volunteers = hours_util.get_top_volunteers(volunteer_hours)
+    all_volunteers = hours_util.get_all_volunteers(volunteer_hours)
+    non_admin_volunteers = hours_util.get_non_admin_volunteers(
+        volunteer_hours, config, tidyhq_cache
+    )
+
+    # Header
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="Overall Volunteer Statistics"
+    )
+
+    # Overall summary
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    summary_text = f"*Total Hours:* {stats['total_hours']:,}h\n"
+    summary_text += f"*Total Volunteers:* {stats['total_volunteers']} registered\n"
+    summary_text += (
+        f"*Average Hours per Volunteer:* {stats['average_hours_per_volunteer']}h"
+    )
+    summary_text += (
+        f" ({stats['average_hours_per_volunteer_no_admin']}h excl. committee)"
+    )
+
+    block_list = block_formatters.inject_text(block_list=block_list, text=summary_text)
+
+    # Top volunteers section (Top 5)
+    if top_volunteers:
+        block_list = block_formatters.add_block(block_list, blocks.divider)
+        block_list = block_formatters.add_block(block_list, blocks.header)
+        block_list = block_formatters.inject_text(
+            block_list=block_list, text="🏆 Top 5 Volunteers"
+        )
+
+        top_text = ""
+        emoji = {
+            1: ":first_place_medal:",
+            2: ":second_place_medal:",
+            3: ":third_place_medal:",
+        }
+        for i, volunteer in enumerate(top_volunteers, 1):
+            top_text += f"{emoji.get(i, ':medal')} *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+
+        block_list = block_formatters.add_block(block_list, blocks.text)
+        block_list = block_formatters.inject_text(
+            block_list=block_list, text=top_text.strip()
+        )
+
+    # Non-admin volunteers leaderboard
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="👥 Volunteers (Excluding Committee)"
+    )
+
+    non_admin_text = ""
+    for i, volunteer in enumerate(non_admin_volunteers, 1):
+        non_admin_text += (
+            f"{i}. *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+        )
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text=non_admin_text.strip()
+    )
+
+    # Hours by month
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="📅 Hours by Month"
+    )
+
+    # Trim to last 12 months
+    month_items = list(stats["hours_by_month"].items())
+    recent_months = month_items[:12] if len(month_items) > 12 else month_items
+
+    monthly_text = ""
+    for month_str, month_hours in recent_months:
+        try:
+            month_date = datetime.strptime(month_str, "%Y-%m")
+            month_name = month_date.strftime("%B %Y")
+        except ValueError:
+            month_name = month_str
+        monthly_text += f"• *{month_name}:* {month_hours}h\n"
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text=monthly_text.strip()
+    )
+
+    # All volunteers leaderboard
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="📋 Complete Leaderboard"
+    )
+
+    all_text = ""
+    for i, volunteer in enumerate(all_volunteers, 1):
+        all_text += f"{i}. *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text=all_text.strip()
+    )
 
     return block_list
