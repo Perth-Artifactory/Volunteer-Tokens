@@ -246,67 +246,73 @@ def add_hours_with_notifications(
             )
 
 
-def get_overall_statistics(volunteer_hours: dict) -> dict:
+def get_overall_statistics(
+    volunteer_hours: dict, config: dict, tidyhq_cache: dict
+) -> dict:
     """Calculate overall statistics across all volunteers."""
-    
-    if not volunteer_hours:
-        return {
-            "total_hours": 0,
-            "total_volunteers": 0,
-            "average_hours_per_volunteer": 0,
-            "hours_by_month": {},
-            "active_volunteers": 0
-        }
-    
+
     total_hours = 0
+    total_admin_hours = 0
+    admin_count = 0
     hours_by_month = {}
-    active_volunteers = 0
-    
+
     for tidyhq_id, volunteer_data in volunteer_hours.items():
         volunteer_total = 0
-        
+
+        admin = tidyhq.check_for_groups(
+            contact_id=str(tidyhq_id),
+            groups=config["tidyhq"]["group_ids"]["admin"],
+            tidyhq_cache=tidyhq_cache,
+        )
+
         for month_str, hours_in_month in volunteer_data["months"].items():
             # Add to monthly totals
             if month_str not in hours_by_month:
                 hours_by_month[month_str] = 0
             hours_by_month[month_str] += hours_in_month
-            
+
             # Add to volunteer total
             volunteer_total += hours_in_month
-        
+
+        if admin:
+            total_admin_hours += volunteer_total
+            admin_count += 1
+
         total_hours += volunteer_total
-        if volunteer_total > 0:
-            active_volunteers += 1
-    
+
     total_volunteers = len(volunteer_hours)
-    average_hours_per_volunteer = total_hours / total_volunteers if total_volunteers > 0 else 0
-    
+    average_hours_per_volunteer = total_hours / total_volunteers
+
     # Sort months chronologically
-    sorted_months = dict(sorted(hours_by_month.items()))
-    
+    sorted_months = dict(sorted(hours_by_month.items(), reverse=True))
+
     return {
         "total_hours": total_hours,
         "total_volunteers": total_volunteers,
         "average_hours_per_volunteer": round(average_hours_per_volunteer, 1),
+        "average_hours_per_volunteer_no_admin": round(
+            (total_hours - total_admin_hours) / (total_volunteers - admin_count), 1
+        ),
         "hours_by_month": sorted_months,
-        "active_volunteers": active_volunteers
     }
 
 
 def get_top_volunteers(volunteer_hours: dict, limit: int = 5) -> list:
     """Get the top volunteers by total hours."""
-    
+
     volunteers_with_totals = []
-    
+
     for tidyhq_id, volunteer_data in volunteer_hours.items():
         total = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
         if total > 0:
-            volunteers_with_totals.append({
-                "tidyhq_id": tidyhq_id,
-                "name": volunteer_data["name"],
-                "total_hours": total
-            })
-    
+            volunteers_with_totals.append(
+                {
+                    "tidyhq_id": tidyhq_id,
+                    "name": volunteer_data["name"],
+                    "total_hours": total,
+                }
+            )
+
     # Sort by total hours (descending) and take top N
     volunteers_with_totals.sort(key=lambda x: x["total_hours"], reverse=True)
     return volunteers_with_totals[:limit]
@@ -314,29 +320,36 @@ def get_top_volunteers(volunteer_hours: dict, limit: int = 5) -> list:
 
 def get_all_volunteers(volunteer_hours: dict) -> list:
     """Get all volunteers with hours, sorted by total hours (descending)."""
-    
+
     volunteers_with_totals = []
-    
+
     for tidyhq_id, volunteer_data in volunteer_hours.items():
         total = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
         if total > 0:
-            volunteers_with_totals.append({
-                "tidyhq_id": tidyhq_id,
-                "name": volunteer_data["name"],
-                "total_hours": total
-            })
-    
+            volunteers_with_totals.append(
+                {
+                    "tidyhq_id": tidyhq_id,
+                    "name": volunteer_data["name"],
+                    "total_hours": total,
+                }
+            )
+
     # Sort by total hours (descending)
     volunteers_with_totals.sort(key=lambda x: x["total_hours"], reverse=True)
     return volunteers_with_totals
 
 
-def get_non_admin_volunteers(volunteer_hours: dict, config: dict, tidyhq_cache: dict) -> list:
-    """Get all non-admin volunteers with hours, sorted by total hours (descending)."""
-    
+def get_non_admin_volunteers(
+    volunteer_hours: dict, config: dict, tidyhq_cache: dict
+) -> list:
+    """Get all non-admin volunteers with hours, sorted by total hours (descending).
+
+    Appends committee members total at the end of the list."""
+
     volunteers_with_totals = []
+    committee = 0
     admin_groups = config["tidyhq"]["group_ids"]["admin"]
-    
+
     for tidyhq_id, volunteer_data in volunteer_hours.items():
         total = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
         if total > 0:
@@ -346,14 +359,28 @@ def get_non_admin_volunteers(volunteer_hours: dict, config: dict, tidyhq_cache: 
                 groups=admin_groups,
                 tidyhq_cache=tidyhq_cache,
             )
-            
+
+            if is_admin:
+                committee += total
+
             if not is_admin:
-                volunteers_with_totals.append({
-                    "tidyhq_id": tidyhq_id,
-                    "name": volunteer_data["name"],
-                    "total_hours": total
-                })
-    
+                volunteers_with_totals.append(
+                    {
+                        "tidyhq_id": tidyhq_id,
+                        "name": volunteer_data["name"],
+                        "total_hours": total,
+                    }
+                )
+
     # Sort by total hours (descending)
     volunteers_with_totals.sort(key=lambda x: x["total_hours"], reverse=True)
+
+    volunteers_with_totals.append(
+        {
+            "tidyhq_id": "committee",
+            "name": "Committee Members",
+            "total_hours": committee,
+        }
+    )
+
     return volunteers_with_totals
