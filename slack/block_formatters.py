@@ -488,7 +488,7 @@ def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
             3: ":third_place_medal:",
         }
         for i, volunteer in enumerate(top_volunteers, 1):
-            top_text += f"{emoji.get(i, ':medal')} *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+            top_text += f"{emoji.get(i, ':medal:')} *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
 
         block_list = block_formatters.add_block(block_list, blocks.text)
         block_list = block_formatters.inject_text(
