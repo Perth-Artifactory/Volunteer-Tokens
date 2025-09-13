@@ -222,6 +222,8 @@ def modal_bulk_add_hours(ack, body):
 def handle_bulk_hours_submission(ack, body):
     ack()
 
+    global tidyhq_cache
+
     # Collate changes to make
     count = 1
     changes = {}
@@ -254,7 +256,7 @@ def handle_bulk_hours_submission(ack, body):
 
         count += 1
 
-    hours.add_hours_with_notifications(
+    tidyhq_cache = hours.add_hours_with_notifications(
         changes=changes,
         tidyhq_cache=tidyhq_cache,
         volunteer_hours=volunteer_hours,
@@ -271,7 +273,7 @@ def handle_hours_submission(ack, body):
     ack()
     # pprint(body)
 
-    global volunteer_hours
+    global volunteer_hours, tidyhq_cache
 
     user_id = body["user"]["id"]
 
@@ -291,7 +293,7 @@ def handle_hours_submission(ack, body):
     for volunteer in volunteers:
         changes[volunteer] = hours_volunteered
 
-    hours.add_hours_with_notifications(
+    tidyhq_cache = hours.add_hours_with_notifications(
         changes=changes,
         tidyhq_cache=tidyhq_cache,
         volunteer_hours=volunteer_hours,
