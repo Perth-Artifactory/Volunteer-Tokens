@@ -302,6 +302,7 @@ def get_top_volunteers(volunteer_hours: dict, limit: int = 5) -> list:
         total = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
         if total > 0:
             volunteers_with_totals.append({
+                "tidyhq_id": tidyhq_id,
                 "name": volunteer_data["name"],
                 "total_hours": total
             })
@@ -309,3 +310,50 @@ def get_top_volunteers(volunteer_hours: dict, limit: int = 5) -> list:
     # Sort by total hours (descending) and take top N
     volunteers_with_totals.sort(key=lambda x: x["total_hours"], reverse=True)
     return volunteers_with_totals[:limit]
+
+
+def get_all_volunteers(volunteer_hours: dict) -> list:
+    """Get all volunteers with hours, sorted by total hours (descending)."""
+    
+    volunteers_with_totals = []
+    
+    for tidyhq_id, volunteer_data in volunteer_hours.items():
+        total = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
+        if total > 0:
+            volunteers_with_totals.append({
+                "tidyhq_id": tidyhq_id,
+                "name": volunteer_data["name"],
+                "total_hours": total
+            })
+    
+    # Sort by total hours (descending)
+    volunteers_with_totals.sort(key=lambda x: x["total_hours"], reverse=True)
+    return volunteers_with_totals
+
+
+def get_non_admin_volunteers(volunteer_hours: dict, config: dict, tidyhq_cache: dict) -> list:
+    """Get all non-admin volunteers with hours, sorted by total hours (descending)."""
+    
+    volunteers_with_totals = []
+    admin_groups = config["tidyhq"]["group_ids"]["admin"]
+    
+    for tidyhq_id, volunteer_data in volunteer_hours.items():
+        total = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
+        if total > 0:
+            # Check if this volunteer is an admin
+            is_admin = tidyhq.check_for_groups(
+                contact_id=tidyhq_id,
+                groups=admin_groups,
+                tidyhq_cache=tidyhq_cache,
+            )
+            
+            if not is_admin:
+                volunteers_with_totals.append({
+                    "tidyhq_id": tidyhq_id,
+                    "name": volunteer_data["name"],
+                    "total_hours": total
+                })
+    
+    # Sort by total hours (descending)
+    volunteers_with_totals.sort(key=lambda x: x["total_hours"], reverse=True)
+    return volunteers_with_totals

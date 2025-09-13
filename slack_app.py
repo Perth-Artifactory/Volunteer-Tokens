@@ -307,7 +307,7 @@ def handle_hours_submission(ack, body):
 def modal_view_statistics(ack, body):
     ack()
 
-    block_list = block_formatters.modal_view_statistics(volunteer_hours)
+    block_list = block_formatters.modal_view_statistics(volunteer_hours, config, tidyhq_cache)
 
     app.client.views_open(
         trigger_id=body["trigger_id"],
