@@ -180,6 +180,27 @@ def modal_add_hours(ack, body):
     )
 
 
+@app.action("self_log")
+def modal_self_log(ack, body):
+    ack()
+
+    block_list = block_formatters.modal_add_hours(
+        mode="self", user_id=body["user"]["id"]
+    )
+
+    app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "submit_hours",
+            "title": {"type": "plain_text", "text": "Add Volunteer Hours"},
+            "submit": {"type": "plain_text", "text": "Add"},
+            "close": {"type": "plain_text", "text": "Cancel"},
+            "blocks": block_list,
+        },
+    )
+
+
 @app.action("view_as_user")
 def modal_view_as_user(ack, body):
     ack()

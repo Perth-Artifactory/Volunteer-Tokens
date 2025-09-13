@@ -153,6 +153,14 @@ def app_home(
         admin_buttons[-1]["action_id"] = "bulk_add_hours"
         admin_buttons[-1]["value"] = tidyhq_id
 
+        # Add self log button
+        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
+        admin_buttons = block_formatters.inject_text(
+            block_list=admin_buttons, text="Log my own hours"
+        )
+        admin_buttons[-1]["action_id"] = "self_log"
+        admin_buttons[-1]["value"] = tidyhq_id
+
         # Add "View as user" button
         admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
         admin_buttons = block_formatters.inject_text(
@@ -308,7 +316,7 @@ def reward_notification(reward_definition: dict, hours, period: str):
     return block_list
 
 
-def modal_add_hours():
+def modal_add_hours(mode: str = "admin", user_id: str = ""):
     """Generate a modal to add hours."""
 
     block_list = []
@@ -329,6 +337,8 @@ def modal_add_hours():
     block_list[-1]["hint"]["text"] = (
         "Only volunteers who are linked to TidyHQ will actually receive hours"
     )
+    if mode == "self":
+        block_list[-1]["element"]["initial_users"] = [user_id]
 
     # Date select
     block_list = block_formatters.add_block(block_list, blocks.date_select)
@@ -353,6 +363,11 @@ def modal_add_hours():
     block_list[-1]["hint"]["text"] = (
         "These hours will be added to *all* selected volunteers"
     )
+
+    # Focus on hours input if self logging
+    # This doesn't actually work for some reason, Slack seems to prefer the date field above
+    if mode == "self":
+        block_list[-1]["element"]["focus_on_load"] = True
 
     # Note input
     block_list = block_formatters.add_block(block_list, blocks.text_question)
