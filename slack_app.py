@@ -303,6 +303,25 @@ def handle_hours_submission(ack, body):
     )
 
 
+@app.action("statistics")
+def modal_statistics(ack, body):
+    ack()
+
+    block_list = block_formatters.modal_statistics(
+        volunteer_hours, config, tidyhq_cache
+    )
+
+    app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "title": {"type": "plain_text", "text": "Volunteer Statistics"},
+            "close": {"type": "plain_text", "text": "Close"},
+            "blocks": block_list,
+        },
+    )
+
+
 @app.view("view_as_user")
 def handle_view_as_user_selection(ack, body):
     ack()
