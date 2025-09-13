@@ -126,10 +126,14 @@ def add_hours_with_notifications(
     app,
     user_id: str,
 ):
-    """Add hours to the record for a volunteer and notify them via Slack"""
+    """Add hours to the record for a volunteer and notify them via Slack
+    
+    Returns the tidyhq_cache (potentially refreshed if users were not found)
+    """
 
     successful = []
     failed = []
+    cache_refreshed = False
 
     for volunteer in changes:
         hours = changes[volunteer]
@@ -137,7 +141,23 @@ def add_hours_with_notifications(
             tidyhq_cache=tidyhq_cache, config=config, slack_id=volunteer
         )
         if not tidyhq_id:
-            logging.warning(f"Could not find TidyHQ ID for Slack user {volunteer}")
+            # If we haven't refreshed the cache yet, try refreshing it first
+            if not cache_refreshed:
+                logging.info(f"Could not find TidyHQ ID for Slack user {volunteer}, refreshing cache")
+                tidyhq_cache = tidyhq.fresh_cache(config=config, force=True)
+                cache_refreshed = True
+                
+                # Write the fresh cache to file to make it the global copy
+                with open("cache.json", "w") as f:
+                    json.dump(tidyhq_cache, f, indent=4)
+                
+                # Try mapping again with the fresh cache
+                tidyhq_id = tidyhq.map_slack_to_tidyhq(
+                    tidyhq_cache=tidyhq_cache, config=config, slack_id=volunteer
+                )
+        
+        if not tidyhq_id:
+            logging.warning(f"Could not find TidyHQ ID for Slack user {volunteer} even after cache refresh")
 
             failed.append(volunteer)
             continue
@@ -244,3 +264,5 @@ def add_hours_with_notifications(
             app.client.pins_add(
                 channel=config["slack"]["admin_channel"], timestamp=m["ts"]
             )
+    
+    return tidyhq_cache

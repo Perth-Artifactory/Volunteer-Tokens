@@ -254,7 +254,7 @@ def handle_bulk_hours_submission(ack, body):
 
         count += 1
 
-    hours.add_hours_with_notifications(
+    tidyhq_cache = hours.add_hours_with_notifications(
         changes=changes,
         tidyhq_cache=tidyhq_cache,
         volunteer_hours=volunteer_hours,
@@ -291,7 +291,7 @@ def handle_hours_submission(ack, body):
     for volunteer in volunteers:
         changes[volunteer] = hours_volunteered
 
-    hours.add_hours_with_notifications(
+    tidyhq_cache = hours.add_hours_with_notifications(
         changes=changes,
         tidyhq_cache=tidyhq_cache,
         volunteer_hours=volunteer_hours,
