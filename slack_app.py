@@ -233,6 +233,7 @@ def handle_bulk_hours_submission(ack, body):
 
     date_raw = data["date_select"]["date_select"]["selected_date"]
     date = datetime.strptime(date_raw, "%Y-%m-%d")
+    note = data["note_input"]["note_input"].get("value", "")
 
     while count <= 10:
         volunteers = data[f"volunteer_select_{count}"][f"volunteer_select_{count}"][
@@ -261,6 +262,7 @@ def handle_bulk_hours_submission(ack, body):
         tidyhq_cache=tidyhq_cache,
         volunteer_hours=volunteer_hours,
         volunteer_date=date,
+        note=note,
         rewards=rewards,
         config=config,
         app=app,
@@ -271,7 +273,6 @@ def handle_bulk_hours_submission(ack, body):
 @app.view("submit_hours")
 def handle_hours_submission(ack, body):
     ack()
-    # pprint(body)
 
     global volunteer_hours, tidyhq_cache
 
@@ -283,6 +284,7 @@ def handle_hours_submission(ack, body):
     hours_volunteered = int(data["hours_input"]["hours_input"]["value"])
     date_raw = data["date_select"]["date_select"]["selected_date"]
     date = datetime.strptime(date_raw, "%Y-%m-%d")
+    note = data["note_input"]["note_input"].get("value", "")
 
     logging.info(
         f"Adding {hours_volunteered} hours on {date} for {', '.join(volunteers)} from {user_id}"
@@ -298,6 +300,7 @@ def handle_hours_submission(ack, body):
         tidyhq_cache=tidyhq_cache,
         volunteer_hours=volunteer_hours,
         volunteer_date=date,
+        note=note,
         rewards=rewards,
         config=config,
         app=app,

@@ -121,6 +121,7 @@ def add_hours_with_notifications(
     tidyhq_cache: dict,
     volunteer_hours: dict,
     volunteer_date: datetime,
+    note: str,
     rewards: dict,
     config: dict,
     app,
@@ -226,7 +227,7 @@ def add_hours_with_notifications(
         )
 
         logging.info(
-            f"Added {hours} hours on {volunteer_date} for TidyHQ ID {tidyhq_id} (Slack ID {volunteer})"
+            f"Added {hours} hours on {volunteer_date} for TidyHQ ID {tidyhq_id} (Slack ID {volunteer}) {'(Note: ' + note + ')' if note else ''}"
         )
 
         slack_misc.push_home(
@@ -241,13 +242,17 @@ def add_hours_with_notifications(
         successful.append(volunteer)
 
         # Let the volunteer know
+        note_add = f' with the note "{note}"' if note else ""
+
         slack_misc.send_dm(
             slack_id=volunteer,
             slack_app=app,
-            message=f"<@{user_id}> added {hours}h against your profile for {volunteer_date.strftime('%B')}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded.",
+            message=f"<@{user_id}> added {hours}h against your profile for {volunteer_date.strftime('%B')}{note_add}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded.",
         )
 
     # Let the admin channel know how we went
+    note_add = f"\nNote: {note}" if note else ""
+
     if successful:
         user_list = ""
         for volunteer in successful:
@@ -256,14 +261,14 @@ def add_hours_with_notifications(
 
         app.client.chat_postMessage(
             channel=config["slack"]["admin_channel"],
-            text=f":white_check_mark: <@{user_id}> added hours for {volunteer_date.strftime('%B')}: {user_list}",
+            text=f":white_check_mark: <@{user_id}> added hours for {volunteer_date.strftime('%B')}: {user_list}{note_add}",
         )
 
     if failed:
         for volunteer in failed:
             m = app.client.chat_postMessage(
                 channel=config["slack"]["admin_channel"],
-                text=f":warning: Could not add {changes[volunteer]}h to <@{volunteer}>, they're not registered on TidyHQ or they're not linked. (Attempted by <@{user_id}>)",
+                text=f":warning: Could not add {changes[volunteer]}h to <@{volunteer}>, they're not registered on TidyHQ or they're not linked. (Attempted by <@{user_id}>){note_add}",
             )
             app.client.pins_add(
                 channel=config["slack"]["admin_channel"], timestamp=m["ts"]

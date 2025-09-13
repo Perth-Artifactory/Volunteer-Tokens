@@ -354,6 +354,18 @@ def modal_add_hours():
         "These hours will be added to *all* selected volunteers"
     )
 
+    # Note input
+    block_list = block_formatters.add_block(block_list, blocks.text_question)
+    block_list[-1]["label"]["text"] = "Optional note"
+    block_list[-1]["element"]["action_id"] = "note_input"
+    block_list[-1]["block_id"] = "note_input"
+    block_list[-1]["element"]["placeholder"]["text"] = "E.g. 'Volunteered at Arduino U'"
+    block_list[-1]["optional"] = True
+    block_list[-1]["hint"] = copy(blocks.base_text)
+    block_list[-1]["hint"]["text"] = (
+        "This note will be displayed in the committee channel and sent to the volunteer(s)"
+    )
+
     return block_list
 
 
@@ -408,6 +420,18 @@ def modal_bulk_add_hours():
     block_list[-1]["hint"] = copy(blocks.base_text)
     block_list[-1]["hint"]["text"] = (
         "We only actually store the month and year of volunteering, the exact day is discarded"
+    )
+
+    # Note input
+    block_list = block_formatters.add_block(block_list, blocks.text_question)
+    block_list[-1]["label"]["text"] = "Optional note"
+    block_list[-1]["element"]["action_id"] = "note_input"
+    block_list[-1]["block_id"] = "note_input"
+    block_list[-1]["element"]["placeholder"]["text"] = "E.g. 'Volunteered at Arduino U'"
+    block_list[-1]["optional"] = True
+    block_list[-1]["hint"] = copy(blocks.base_text)
+    block_list[-1]["hint"]["text"] = (
+        "This note will be displayed in the committee channel and sent to the volunteer(s)"
     )
 
     while count <= 10:
