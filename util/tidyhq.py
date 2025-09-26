@@ -9,7 +9,7 @@ from typing import Any
 import requests
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.WARNING)
 
 
 cache_file = "cache.json"
@@ -175,6 +175,7 @@ def setup_cache(config: dict) -> dict[str, Any]:
     cache["invoices"] = {}
     newest = {}
     for invoice in raw_invoices:
+        created_at = None
         if invoice["contact_id"] not in cache["invoices"]:
             cache["invoices"][invoice["contact_id"]] = []
             # Convert created_at to unix timestamp
@@ -184,6 +185,10 @@ def setup_cache(config: dict) -> dict[str, Any]:
             ).timestamp()
 
             newest[invoice["contact_id"]] = created_at
+
+        if not created_at:
+            continue
+
         cache["invoices"][invoice["contact_id"]].append(invoice)
         if created_at > newest[invoice["contact_id"]]:
             newest[invoice["contact_id"]] = created_at
@@ -351,13 +356,14 @@ def get_custom_field(
     contact: dict | None = None,
     field_id: str | None = None,
     field_map_name: str | None = None,
+    live: bool = False,
 ) -> dict | None:
     """Get the value of a custom field for a contact within TidyHQ.
 
     The field can be specified by either its ID or its name in the config file.
     """
     if field_map_name:
-        logger.debug(f"Looking for field {field_map_name} for contact {contact_id}")
+        logger.debug(f"Mapping field name {field_map_name} to ID")
         field_id = config["tidyhq"]["ids"].get(field_map_name, None)
         logger.debug(f"Field ID for {field_map_name} is {field_id}")
 
@@ -377,6 +383,21 @@ def get_custom_field(
 
     if not contact:
         logger.error(f"Contact {contact_id} not found in cache or we failed to find it")
+        return None
+
+    logger.debug(f"Looking for field {field_id} in contact {contact['id']}")
+
+    # If live is set, we need to query TidyHQ for the most up-to-date contact information
+    if live:
+        logger.debug(f"Fetching live data for contact {contact['id']}")
+        live_contact = query(cat="contacts", term=contact["id"], config=config)  # type: ignore
+        if live_contact:
+            contact = live_contact  # type: ignore
+
+    if not contact:
+        logger.error(
+            f"Contact {contact_id} not found in cache{' or live query' if live else ''}"
+        )
         return None
 
     for field in contact["custom_fields"]:
@@ -546,4 +567,32 @@ def map_slack_to_tidyhq(tidyhq_cache: dict, slack_id: str, config: dict) -> str 
                 return str(contact["id"])
 
     logger.debug(f"Could not find TidyHQ contact with Slack ID {slack_id}")
+    return None
+
+
+def map_tidyhq_to_slack(
+    tidyhq_cache: dict, contact_id: str, config: dict
+) -> str | None:
+    """Map TidyHQ contact IDs to Slack user IDs."""
+
+    logger.debug(f"Looking for Slack ID for TidyHQ contact {contact_id}")
+
+    contact = get_contact(contact_id=contact_id, tidyhq_cache=tidyhq_cache)
+    if not contact:
+        logger.error(f"Contact {contact_id} not found in cache")
+        return None
+
+    slack_field = get_custom_field(
+        config=config,
+        contact=contact,
+        cache=tidyhq_cache,
+        field_map_name="slack",
+    )
+    if slack_field:
+        logger.info(
+            f"Found Slack ID {slack_field['value']} for TidyHQ contact {contact_id}"
+        )
+        return slack_field["value"]
+
+    logger.debug(f"Could not find Slack ID for TidyHQ contact {contact_id}")
     return None

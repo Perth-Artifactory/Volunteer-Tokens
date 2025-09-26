@@ -5,7 +5,8 @@
         "schemalogger",
         "submodal",
         "tidyhq",
-        "tidyproxy"
+        "tidyproxy",
+        "YYMM"
     ],
     "sonarlint.connectedMode.project": {
         "connectionId": "https-sq-artifactory-org-au",
