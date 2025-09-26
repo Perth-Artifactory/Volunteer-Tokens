@@ -543,9 +543,7 @@ def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
 
     non_admin_text = ""
     for i, volunteer in enumerate(non_admin_volunteers, 1):
-        non_admin_text += (
-            f"{i}. *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
-        )
+        non_admin_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['total_hours']} hours\n"
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
@@ -586,7 +584,8 @@ def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
 
     all_text = ""
     for i, volunteer in enumerate(all_volunteers, 1):
-        all_text += f"{i}. *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+        linked_name = f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>"
+        all_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_hours']} hours\n"
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
