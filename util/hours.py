@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from util import tidyhq, rewards as rewards_util
 from slack import misc as slack_misc, block_formatters
 
+from slack_bolt import App
+
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
@@ -88,6 +90,26 @@ def get_current_month(tidyhq_id: int | str, volunteer_hours: dict) -> int:
     )
 
 
+def get_volunteer_streak(tidyhq_id: int | str, volunteer_hours: dict) -> dict:
+    """Get the volunteering streak for a specified TidyHQ ID."""
+
+    tidyhq_id = str(tidyhq_id).strip()
+
+    streaks = get_hour_streaks(volunteer_hours=volunteer_hours)
+
+    return streaks.get(tidyhq_id, {"longest_streak": 0, "current_streak": 0})
+
+
+def get_badge_streak(tidyhq_id: int | str, volunteer_hours: dict) -> dict:
+    """Get the badge streak for a specified TidyHQ ID."""
+
+    tidyhq_id = str(tidyhq_id).strip()
+
+    badge_streaks = get_volunteer_badge_streaks(volunteer_hours=volunteer_hours)
+
+    return badge_streaks.get(tidyhq_id, {"longest_streak": 0, "current_streak": 0})
+
+
 def add_hours(
     tidyhq_id: int | str,
     volunteer_hours: dict,
@@ -124,9 +146,9 @@ def add_hours_with_notifications(
     note: str,
     rewards: dict,
     config: dict,
-    app,
+    app: App,
     user_id: str,
-):
+) -> dict:
     """Add hours to the record for a volunteer and notify them via Slack
 
     Returns the tidyhq_cache (potentially refreshed if users were not found)
@@ -484,3 +506,100 @@ def get_non_admin_volunteers(
     )
 
     return volunteers_with_totals
+
+
+def get_hour_streaks(volunteer_hours: dict) -> dict:
+    """Calculate volunteering streaks for each volunteer."""
+
+    streaks = {}
+
+    for tidyhq_id, volunteer_data in volunteer_hours.items():
+        months = sorted(volunteer_data["months"].keys())
+        longest_streak = 0
+        current_streak = 0
+        previous_month = None
+
+        for month_str in months:
+            if volunteer_data["months"][month_str] > 0:
+                month_date = datetime.strptime(month_str, "%Y-%m")
+                if previous_month:
+                    # Check if this month is consecutive to the previous month
+                    if (
+                        month_date.year == previous_month.year
+                        and month_date.month == previous_month.month + 1
+                    ) or (
+                        month_date.year == previous_month.year + 1
+                        and month_date.month == 1
+                        and previous_month.month == 12
+                    ):
+                        current_streak += 1
+                    else:
+                        current_streak = 1
+                else:
+                    current_streak = 1
+
+                previous_month = month_date
+
+                if current_streak > longest_streak:
+                    longest_streak = current_streak
+            else:
+                current_streak = 0
+                previous_month = None
+
+        streaks[tidyhq_id] = {
+            "name": volunteer_data["name"],
+            "longest_streak": longest_streak,
+            "current_streak": current_streak,
+        }
+
+    return streaks
+
+
+def get_volunteer_badge_streaks(volunteer_hours: dict) -> dict:
+    """Calculate badge streaks for each volunteer.
+
+    A badge streak is defined as having volunteered at least ten hours in a month.
+    """
+
+    badge_streaks = {}
+
+    for tidyhq_id, volunteer_data in volunteer_hours.items():
+        months = sorted(volunteer_data["months"].keys())
+        longest_badge_streak = 0
+        current_badge_streak = 0
+        previous_month = None
+
+        for month_str in months:
+            if volunteer_data["months"][month_str] >= 10:
+                month_date = datetime.strptime(month_str, "%Y-%m")
+                if previous_month:
+                    # Check if this month is consecutive to the previous month
+                    if (
+                        month_date.year == previous_month.year
+                        and month_date.month == previous_month.month + 1
+                    ) or (
+                        month_date.year == previous_month.year + 1
+                        and month_date.month == 1
+                        and previous_month.month == 12
+                    ):
+                        current_badge_streak += 1
+                    else:
+                        current_badge_streak = 1
+                else:
+                    current_badge_streak = 1
+
+                previous_month = month_date
+
+                if current_badge_streak > longest_badge_streak:
+                    longest_badge_streak = current_badge_streak
+            else:
+                current_badge_streak = 0
+                previous_month = None
+
+        badge_streaks[tidyhq_id] = {
+            "name": volunteer_data["name"],
+            "longest_streak": longest_badge_streak,
+            "current_streak": current_badge_streak,
+        }
+
+    return badge_streaks

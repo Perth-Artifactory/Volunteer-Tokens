@@ -162,7 +162,7 @@ def handle_app_home_opened_events(body: dict) -> None:
 
 
 @app.action("add_hours")
-def modal_add_hours(ack, body):
+def modal_add_hours(ack: slack_ack, body) -> None:
     ack()
 
     block_list = block_formatters.modal_add_hours()
@@ -181,7 +181,7 @@ def modal_add_hours(ack, body):
 
 
 @app.action("self_log")
-def modal_self_log(ack, body):
+def modal_self_log(ack: slack_ack, body) -> None:
     ack()
 
     block_list = block_formatters.modal_add_hours(
@@ -202,7 +202,7 @@ def modal_self_log(ack, body):
 
 
 @app.action("view_as_user")
-def modal_view_as_user(ack, body):
+def modal_view_as_user(ack: slack_ack, body) -> None:
     ack()
 
     block_list = block_formatters.modal_view_as_user()
@@ -221,7 +221,7 @@ def modal_view_as_user(ack, body):
 
 
 @app.action("bulk_add_hours")
-def modal_bulk_add_hours(ack, body):
+def modal_bulk_add_hours(ack: slack_ack, body) -> None:
     ack()
 
     block_list = block_formatters.modal_bulk_add_hours()
@@ -240,7 +240,7 @@ def modal_bulk_add_hours(ack, body):
 
 
 @app.view("submit_bulk_hours")
-def handle_bulk_hours_submission(ack, body):
+def handle_bulk_hours_submission(ack: slack_ack, body) -> None:
     ack()
 
     global tidyhq_cache
@@ -292,7 +292,7 @@ def handle_bulk_hours_submission(ack, body):
 
 
 @app.view("submit_hours")
-def handle_hours_submission(ack, body):
+def handle_hours_submission(ack: slack_ack, body) -> None:
     ack()
 
     global volunteer_hours, tidyhq_cache
@@ -329,8 +329,8 @@ def handle_hours_submission(ack, body):
     )
 
 
-@app.action("statistics")
-def modal_statistics(ack, body):
+@app.action("admin_statistics")
+def modal_admin_statistics(ack: slack_ack, body) -> None:
     ack()
 
     block_list = block_formatters.modal_statistics(
@@ -348,8 +348,31 @@ def modal_statistics(ack, body):
     )
 
 
+@app.action("user_statistics")
+def modal_user_statistics(ack: slack_ack, body) -> None:
+    ack()
+
+    # Get the tidyhq id from the button value
+    tidyhq_id = body["actions"][0]["value"]
+
+    block_list = block_formatters.modal_user_statistics(
+        tidyhq_id=tidyhq_id,
+        volunteer_hours=volunteer_hours,
+    )
+
+    app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "title": {"type": "plain_text", "text": "Volunteering Stats"},
+            "close": {"type": "plain_text", "text": "Close"},
+            "blocks": block_list,
+        },
+    )
+
+
 @app.view("view_as_user")
-def handle_view_as_user_selection(ack, body):
+def handle_view_as_user_selection(ack: slack_ack, body) -> None:
     ack()
 
     user_id = body["user"]["id"]
