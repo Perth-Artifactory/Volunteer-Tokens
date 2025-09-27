@@ -162,7 +162,7 @@ def handle_app_home_opened_events(body: dict) -> None:
 
 
 @app.action("add_hours")
-def modal_add_hours(ack: slack_ack, body) -> None:
+def modal_add_hours(ack: slack_ack, body: dict) -> None:
     ack()
 
     block_list = block_formatters.modal_add_hours()
@@ -181,7 +181,7 @@ def modal_add_hours(ack: slack_ack, body) -> None:
 
 
 @app.action("self_log")
-def modal_self_log(ack: slack_ack, body) -> None:
+def modal_self_log(ack: slack_ack, body: dict) -> None:
     ack()
 
     block_list = block_formatters.modal_add_hours(
@@ -202,7 +202,7 @@ def modal_self_log(ack: slack_ack, body) -> None:
 
 
 @app.action("view_as_user")
-def modal_view_as_user(ack: slack_ack, body) -> None:
+def modal_view_as_user(ack: slack_ack, body: dict) -> None:
     ack()
 
     block_list = block_formatters.modal_view_as_user()
@@ -221,7 +221,7 @@ def modal_view_as_user(ack: slack_ack, body) -> None:
 
 
 @app.action("bulk_add_hours")
-def modal_bulk_add_hours(ack: slack_ack, body) -> None:
+def modal_bulk_add_hours(ack: slack_ack, body: dict) -> None:
     ack()
 
     block_list = block_formatters.modal_bulk_add_hours()
@@ -240,7 +240,7 @@ def modal_bulk_add_hours(ack: slack_ack, body) -> None:
 
 
 @app.view("submit_bulk_hours")
-def handle_bulk_hours_submission(ack: slack_ack, body) -> None:
+def handle_bulk_hours_submission(ack: slack_ack, body: dict) -> None:
     ack()
 
     global tidyhq_cache
@@ -292,7 +292,7 @@ def handle_bulk_hours_submission(ack: slack_ack, body) -> None:
 
 
 @app.view("submit_hours")
-def handle_hours_submission(ack: slack_ack, body) -> None:
+def handle_hours_submission(ack: slack_ack, body: dict) -> None:
     ack()
 
     global volunteer_hours, tidyhq_cache
@@ -330,7 +330,7 @@ def handle_hours_submission(ack: slack_ack, body) -> None:
 
 
 @app.action("admin_statistics")
-def modal_admin_statistics(ack: slack_ack, body) -> None:
+def modal_admin_statistics(ack: slack_ack, body: dict) -> None:
     ack()
 
     block_list = block_formatters.modal_statistics(
@@ -349,7 +349,7 @@ def modal_admin_statistics(ack: slack_ack, body) -> None:
 
 
 @app.action("user_statistics")
-def modal_user_statistics(ack: slack_ack, body) -> None:
+def modal_user_statistics(ack: slack_ack, body: dict) -> None:
     ack()
 
     # Get the tidyhq id from the button value
@@ -372,7 +372,7 @@ def modal_user_statistics(ack: slack_ack, body) -> None:
 
 
 @app.view("view_as_user")
-def handle_view_as_user_selection(ack: slack_ack, body) -> None:
+def handle_view_as_user_selection(ack: slack_ack, body: dict) -> None:
     ack()
 
     user_id = body["user"]["id"]
