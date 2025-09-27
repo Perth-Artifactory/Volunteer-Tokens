@@ -98,6 +98,12 @@ def app_home(
         text=strings.explainer,
     )
 
+    # Add an accessory button to view statistics
+    block_list[-1]["accessory"] = copy(blocks.button)
+    block_list[-1]["accessory"]["text"]["text"] = "View Statistics"
+    block_list[-1]["accessory"]["action_id"] = "user_statistics"
+    block_list[-1]["accessory"]["value"] = tidyhq_id
+
     # Get the user's total hours
     total_hours = hours.get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
 
@@ -107,16 +113,6 @@ def app_home(
     )
     this_month_hours = hours.get_current_month(
         tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
-    )
-
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    block_list = block_formatters.inject_text(
-        block_list=block_list,
-        text=strings.hours_summary.format(
-            last_month=last_month_hours,
-            total_hours=total_hours,
-            this_month=this_month_hours,
-        ),
     )
 
     admin = tidyhq.check_for_groups(
@@ -172,9 +168,9 @@ def app_home(
         # Add "View Statistics" button
         admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
         admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="Statistics"
+            block_list=admin_buttons, text="Overall Statistics"
         )
-        admin_buttons[-1]["action_id"] = "statistics"
+        admin_buttons[-1]["action_id"] = "admin_statistics"
         admin_buttons[-1]["value"] = tidyhq_id
 
         block_list = block_formatters.add_block(block_list, blocks.actions)
@@ -292,7 +288,7 @@ def reward_tier(
     return block_list
 
 
-def reward_notification(reward_definition: dict, hours, period: str):
+def reward_notification(reward_definition: dict, hours: int, period: str) -> list[dict]:
     """Format a reward notification message."""
 
     if period == "cumulative":
@@ -316,7 +312,7 @@ def reward_notification(reward_definition: dict, hours, period: str):
     return block_list
 
 
-def modal_add_hours(mode: str = "admin", user_id: str = ""):
+def modal_add_hours(mode: str = "admin", user_id: str = "") -> list[dict]:
     """Generate a modal to add hours."""
 
     block_list = []
@@ -384,7 +380,7 @@ def modal_add_hours(mode: str = "admin", user_id: str = ""):
     return block_list
 
 
-def modal_view_as_user():
+def modal_view_as_user() -> list[dict]:
     """Generate a modal to select a user to view as."""
 
     block_list = []
@@ -412,7 +408,7 @@ def modal_view_as_user():
     return block_list
 
 
-def modal_bulk_add_hours():
+def modal_bulk_add_hours() -> list[dict]:
     """Generate a modal to bulk add hours from up to 10 users at a time."""
 
     block_list = []
@@ -475,7 +471,9 @@ def modal_bulk_add_hours():
     return block_list
 
 
-def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
+def modal_statistics(
+    volunteer_hours: dict, config: dict, tidyhq_cache: dict
+) -> list[dict]:
     """Generate a modal showing overall volunteer statistics."""
 
     from datetime import datetime
@@ -492,6 +490,7 @@ def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
     non_admin_volunteers = hours_util.get_non_admin_volunteers(
         volunteer_hours, config, tidyhq_cache
     )
+    badge_streak = hours_util.get_volunteer_badge_streaks(volunteer_hours)
 
     # Header
     block_list = block_formatters.add_block(block_list, blocks.header)
@@ -575,6 +574,35 @@ def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
         block_list=block_list, text=monthly_text.strip()
     )
 
+    # Badge streak leaderboard
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="Longest :artifactory2-black: Streaks"
+    )
+
+    streak_text = ""
+    for i, volunteer in enumerate(
+        sorted(
+            badge_streak.values(),
+            key=lambda x: x["longest_streak"],
+            reverse=True,
+        ),
+        1,
+    ):
+        if volunteer["longest_streak"] > 0:
+            streak_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['longest_streak']} months {':star:' if volunteer['current_streak'] == volunteer['longest_streak'] else ''}\n"
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text=streak_text.strip()
+    )
+    block_list = block_formatters.add_block(block_list, blocks.context)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text=":star: indicates the longest streak is still active",
+    )
+
     # All volunteers leaderboard
     block_list = block_formatters.add_block(block_list, blocks.divider)
     block_list = block_formatters.add_block(block_list, blocks.header)
@@ -591,5 +619,57 @@ def modal_statistics(volunteer_hours: dict, config: dict, tidyhq_cache: dict):
     block_list = block_formatters.inject_text(
         block_list=block_list, text=all_text.strip()
     )
+
+    return block_list
+
+
+def modal_user_statistics(
+    tidyhq_id: str,
+    volunteer_hours: dict,
+) -> list[dict]:
+    """Generate a modal showing overall volunteer statistics for a specific user."""
+
+    from util import hours as hours_util
+
+    # Get the user's total hours
+    total_hours = hours.get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
+
+    # Get the user's hours for last month
+    last_month_hours = hours.get_last_month(
+        tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+    )
+    this_month_hours = hours.get_current_month(
+        tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+    )
+
+    # Get streak information
+    streak = hours_util.get_volunteer_streak(
+        tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+    )
+    badge_streak = hours_util.get_badge_streak(
+        tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+    )
+
+    block_list = []
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text=strings.stats_explainer
+    )
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+
+    stat_str = ""
+    stat_str += f"*Total Hours Volunteered:* {total_hours}h\n"
+    stat_str += f"*Hours Last Month:* {last_month_hours}h\n"
+    stat_str += f"*Hours This Month:* {this_month_hours}h\n"
+    stat_str += f"*Current Monthly Streak:* {streak['current_streak']} months\n"
+    stat_str += f"*Longest Monthly Streak:* {streak['longest_streak']} months {'(Your longest yet!)' if streak['current_streak'] == streak['longest_streak'] else ''}\n"
+    if badge_streak["longest_streak"] > 0:
+        stat_str += f"*Current :artifactory2-black: Streak:* {badge_streak['current_streak']} months\n"
+        stat_str += f"*Longest :artifactory2-black: Streak:* {badge_streak['longest_streak']} months {'(Your longest yet!)' if badge_streak['current_streak'] == badge_streak['longest_streak'] else ''}\n"
+    else:
+        stat_str += "*:artifactory2-black: Streaks:* You haven't earned a :artifactory2-black: badge yet. Volunteer for at least 10 hours in a single month to unlock it!\n"
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(block_list=block_list, text=stat_str)
 
     return block_list
