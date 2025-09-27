@@ -591,7 +591,7 @@ def modal_statistics(
         1,
     ):
         if volunteer["longest_streak"] > 0:
-            streak_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['longest_streak']} months {':star:' if volunteer['current_streak'] == volunteer['longest_streak'] else ''}\n"
+            streak_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['longest_streak']}m {':star:' if volunteer['current_streak'] == volunteer['longest_streak'] else ''}\n"
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
