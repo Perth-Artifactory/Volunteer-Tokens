@@ -312,6 +312,20 @@ def reward_notification(reward_definition: dict, hours: int, period: str) -> lis
     return block_list
 
 
+def welcome_message() -> list[dict]:
+    """Generate a welcome message for new users."""
+
+    block_list = []
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text=strings.welcome_message,
+    )
+
+    return block_list
+
+
 def modal_add_hours(mode: str = "admin", user_id: str = "") -> list[dict]:
     """Generate a modal to add hours."""
 

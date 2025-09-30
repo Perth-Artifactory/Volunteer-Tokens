@@ -12,3 +12,8 @@ no_active_rewards = "Unfortunately there are no active reward tiers recorded for
 admin_explainer = "As an admin you have some extra tools available to you below. Please use them responsibly."
 add_hours_explainer = "Use this form to add hours to volunteers. Remember, if they also put a token in the box the time will be counted twice!"
 bulk_add_explainer = "Use this form to bulk add various numbers of hours to volunteers. Primarily intended for use when processing an event or the token box."
+welcome_message = """Welcome to the volunteer token system and congratulations on completing your member induction!
+
+You can use this app to track your volunteering hours and progress towards rewards. As a reminder, each hour you spend volunteering out of the goodness of your heart (ie, not volunteering in exchange for training) also earns you $2 in bar credit at the Artifactory. (redeemable on the day you volunteer)
+
+Click on the Home tab to get started."""

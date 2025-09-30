@@ -34,7 +34,7 @@ class mrkdwn_renderer(mistune.HTMLRenderer):
     def codespan(self, text: str) -> str:
         return f"`{text}`"
 
-    def link(self, link: str, title: str, text: str) -> str:
+    def link(self, link: str, title: str, text: str) -> str:  # type: ignore
         return f"<{link}|{title}>"
 
     def strong(self, text: str) -> str:

@@ -120,13 +120,6 @@ def ignore_app_mention(ack: slack_ack) -> None:
     ack()
 
 
-# Event listener for direct messages to the bot
-@app.event("message")
-def ignore_message(ack: slack_ack) -> None:
-    """Ignore messages sent to the bot"""
-    ack()
-
-
 @app.event("app_home_opened")
 def handle_app_home_opened_events(body: dict) -> None:
     """Regenerate the app home when it's opened by a user"""
@@ -419,6 +412,56 @@ def handle_view_as_user_selection(ack: slack_ack, body: dict) -> None:
 
     except Exception as e:
         logging.error(f"Error in view as user modal: {e}")
+
+
+# Listen for messages in the training channel
+@app.event("message")
+def handle_training_channel_messages(ack, body: dict) -> None:
+    ack()
+
+    # Limit to only messages in the training channel
+    if body["event"].get("channel") != config["slack"].get("training_channel"):
+        return
+
+    # Limit to only messages with the correct metadata
+    if "metadata" not in body["event"]:
+        return
+
+    # Limit to training additions
+    if body["event"]["metadata"].get("event_type") != "training_add":
+        return
+
+    # Limit to messages for the right group ID
+    if body["event"]["metadata"]["event_payload"].get(
+        "machine" != str(config["tidyhq"]["trigger_group"])
+    ):
+        return
+
+    logging.info("Training log message received")
+
+    block_list = block_formatters.welcome_message()
+
+    # Get the slack ID of the user based on their tidyhq ID
+    tidyhq_id = body["event"]["metadata"]["event_payload"].get("operator")
+    slack_id = tidyhq.map_tidyhq_to_slack(
+        tidyhq_cache=tidyhq_cache, config=config, contact_id=tidyhq_id
+    )
+
+    if slack_id:
+        # Send welcome message to user
+        slack_misc.send_dm(
+            slack_id=slack_id,
+            blocks=block_list,
+            slack_app=app,
+            message="Welcome to the volunteer token system!",
+        )
+
+        # Send a threaded message to the training channel confirming the message was sent
+        app.client.chat_postMessage(
+            channel=config["slack"].get("training_channel"),
+            text=f"Welcome message sent to <@{slack_id}>",
+            thread_ts=body["event"].get("ts"),
+        )
 
 
 # The cron mode renders the app home for every user in the workspace and resets filters
