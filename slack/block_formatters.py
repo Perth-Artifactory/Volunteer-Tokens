@@ -661,11 +661,11 @@ def modal_user_statistics(
     stat_str += f"*Total Hours Volunteered:* {total_hours}h\n"
     stat_str += f"*Hours Last Month:* {last_month_hours}h\n"
     stat_str += f"*Hours This Month:* {this_month_hours}h\n"
-    stat_str += f"*Current Monthly Streak:* {streak['current_streak']} months\n"
-    stat_str += f"*Longest Monthly Streak:* {streak['longest_streak']} months {'(Your longest yet!)' if streak['current_streak'] == streak['longest_streak'] else ''}\n"
+    stat_str += f"*Current Monthly Streak:* {streak['current_streak']} months{' (Your longest yet!)' if streak['current_streak'] == streak['longest_streak'] else ''}\n"
+    stat_str += f"*Longest Monthly Streak:* {streak['longest_streak']} months\n"
     if badge_streak["longest_streak"] > 0:
-        stat_str += f"*Current :artifactory2-black: Streak:* {badge_streak['current_streak']} months\n"
-        stat_str += f"*Longest :artifactory2-black: Streak:* {badge_streak['longest_streak']} months {'(Your longest yet!)' if badge_streak['current_streak'] == badge_streak['longest_streak'] else ''}\n"
+        stat_str += f"*Current :artifactory2-black: Streak:* {badge_streak['current_streak']} months {'(Your longest yet!)' if badge_streak['current_streak'] == badge_streak['longest_streak'] else ''}\n"
+        stat_str += f"*Longest :artifactory2-black: Streak:* {badge_streak['longest_streak']} months\n"
     else:
         stat_str += "*:artifactory2-black: Streaks:* You haven't earned a :artifactory2-black: badge yet. Volunteer for at least 10 hours in a single month to unlock it!\n"
 
