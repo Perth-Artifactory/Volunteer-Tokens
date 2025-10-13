@@ -172,6 +172,7 @@ def add_hours_with_notifications(
     app: App,
     user_id: str,
     debt: bool = False,
+    send_to_channel: bool = True,
 ) -> dict:
     """Add hours to the record for a volunteer and notify them via Slack
 
@@ -383,7 +384,7 @@ def add_hours_with_notifications(
     # Let the admin channel know how we went
     note_add = f"\nNote: {note}" if note else ""
 
-    if successful:
+    if successful and send_to_channel:
         user_list = ""
         for volunteer in successful:
             user_list += f", <@{volunteer}> ({changes[volunteer]}h)"

@@ -487,52 +487,89 @@ def handle_view_as_user_selection(ack: slack_ack, body: dict) -> None:
 
 # Listen for messages in the training channel
 @app.event("message")
-def handle_training_channel_messages(ack, body: dict) -> None:
+def handle_training_tracker_messages(ack, body: dict) -> None:
     ack()
 
-    # Limit to only messages in the training channel
-    if body["event"].get("channel") != config["slack"].get("training_channel"):
-        return
+    global volunteer_hours, tidyhq_cache
 
     # Limit to only messages with the correct metadata
     if "metadata" not in body["event"]:
         return
 
-    # Limit to training additions
-    if body["event"]["metadata"].get("event_type") != "training_add":
-        return
+    # Training additions
+    if body["event"]["metadata"].get("event_type") == "training_add":
+        # Limit to messages for the right group ID
+        if body["event"]["metadata"]["event_payload"].get("machine") != str(
+            config["tidyhq"]["trigger_group"]
+        ):
+            return
 
-    # Limit to messages for the right group ID
-    if body["event"]["metadata"]["event_payload"].get(
-        "machine" != str(config["tidyhq"]["trigger_group"])
-    ):
-        return
+        logging.info("Training log message received")
 
-    logging.info("Training log message received")
+        block_list = block_formatters.welcome_message()
 
-    block_list = block_formatters.welcome_message()
-
-    # Get the slack ID of the user based on their tidyhq ID
-    tidyhq_id = body["event"]["metadata"]["event_payload"].get("operator")
-    slack_id = tidyhq.map_tidyhq_to_slack(
-        tidyhq_cache=tidyhq_cache, config=config, contact_id=tidyhq_id
-    )
-
-    if slack_id:
-        # Send welcome message to user
-        slack_misc.send_dm(
-            slack_id=slack_id,
-            blocks=block_list,
-            slack_app=app,
-            message="Welcome to the volunteer token system!",
+        # Get the slack ID of the user based on their tidyhq ID
+        tidyhq_id = body["event"]["metadata"]["event_payload"].get("operator")
+        slack_id = tidyhq.map_tidyhq_to_slack(
+            tidyhq_cache=tidyhq_cache, config=config, contact_id=tidyhq_id
         )
 
-        # Send a threaded message to the training channel confirming the message was sent
-        app.client.chat_postMessage(
-            channel=config["slack"].get("training_channel"),
-            text=f"Welcome message sent to <@{slack_id}>",
-            thread_ts=body["event"].get("ts"),
-        )
+        if slack_id:
+            # Send welcome message to user
+            slack_misc.send_dm(
+                slack_id=slack_id,
+                blocks=block_list,
+                slack_app=app,
+                message="Welcome to the volunteer token system!",
+            )
+
+            # Send a threaded message to the training channel confirming the message was sent
+            app.client.chat_postMessage(
+                channel=config["slack"].get("training_channel"),
+                text=f"Welcome message sent to <@{slack_id}>",
+                thread_ts=body["event"].get("ts"),
+            )
+
+    # Debt additions
+    if body["event"]["metadata"].get("event_type") == "time_debt":
+        logging.info("Time debt log message received")
+
+        tidyhq_id = body["event"]["metadata"]["event_payload"].get("tidyhq_id")
+        slack_id = body["event"]["metadata"]["event_payload"].get("slack_id")
+        trainer = body["event"]["metadata"]["event_payload"].get("trainer")
+
+        if not slack_id:
+            slack_id = tidyhq.map_tidyhq_to_slack(
+                tidyhq_cache=tidyhq_cache, config=config, contact_id=tidyhq_id
+            )
+
+        if slack_id:
+            debt = float(body["event"]["metadata"]["event_payload"].get("hours", 0))
+
+            changes = {slack_id: debt}
+
+            tidyhq_cache = hours.add_hours_with_notifications(
+                changes=changes,
+                tidyhq_cache=tidyhq_cache,
+                volunteer_hours=volunteer_hours,
+                volunteer_date=datetime.now(),
+                note="Training Tracker",
+                rewards=rewards,
+                config=config,
+                app=app,
+                user_id=trainer,
+                debt=True,
+                send_to_channel=False,
+            )
+
+            # Send a threaded message to the training channel confirming the message was processed
+            volunteer_date = datetime.now()
+            app.client.chat_postMessage(
+                channel=config["slack"].get("admin_channel"),
+                text=f":chart_with_downwards_trend: <@{trainer}> added debt for {volunteer_date.strftime('%B')}: <@{slack_id}> ({debt}h)\n(Note: Training Tracker)",
+                thread_ts=body["event"].get("ts"),
+                reply_broadcast=True,
+            )
 
 
 # The cron mode renders the app home for every user in the workspace and resets filters
