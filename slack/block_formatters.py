@@ -382,7 +382,7 @@ def modal_add_hours(
     )
     block_list[-1]["element"]["action_id"] = "hours_input"
     block_list[-1]["block_id"] = "hours_input"
-    block_list[-1]["element"]["min_value"] = "1"
+    block_list[-1]["element"]["min_value"] = "0"
     block_list[-1]["element"]["max_value"] = "100"
     block_list[-1]["element"]["is_decimal_allowed"] = True
     block_list[-1]["hint"] = copy(blocks.base_text)
