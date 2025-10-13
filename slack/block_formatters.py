@@ -520,6 +520,7 @@ def modal_statistics(
     )
     top_volunteers = hours_util.get_top_volunteers(volunteer_hours)
     all_volunteers = hours_util.get_all_volunteers(volunteer_hours)
+    volunteers_with_debt = hours_util.get_all_debt(volunteer_hours)
     non_admin_volunteers = hours_util.get_non_admin_volunteers(
         volunteer_hours, config, tidyhq_cache
     )
@@ -651,6 +652,27 @@ def modal_statistics(
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
         block_list=block_list, text=all_text.strip()
+    )
+
+    # Debt leaderboard
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="⏳ Time Debt Owed"
+    )
+
+    debt_text = ""
+    if volunteers_with_debt:
+        for i, volunteer in enumerate(volunteers_with_debt, 1):
+            linked_name = f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>"
+            debt_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_debt']}h\n"
+
+    else:
+        debt_text = "No volunteers currently owe any time debt. Hooray!"
+
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text=debt_text.strip()
     )
 
     return block_list

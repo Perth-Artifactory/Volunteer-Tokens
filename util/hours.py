@@ -500,6 +500,28 @@ def get_all_volunteers(volunteer_hours: dict) -> list:
     return volunteers_with_totals
 
 
+def get_all_debt(volunteer_hours: dict) -> list:
+    """Get all volunteers with time debt, sorted by total debt (descending)."""
+
+    volunteers_with_debt = []
+
+    for tidyhq_id, volunteer_data in volunteer_hours.items():
+        total_hours = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
+        debt = volunteer_data.get("debt", 0)
+        if debt > total_hours:
+            volunteers_with_debt.append(
+                {
+                    "tidyhq_id": tidyhq_id,
+                    "name": volunteer_data["name"],
+                    "total_debt": debt,
+                }
+            )
+
+    # Sort by total debt (descending)
+    volunteers_with_debt.sort(key=lambda x: x["total_debt"], reverse=True)
+    return volunteers_with_debt
+
+
 def get_non_admin_volunteers(
     volunteer_hours: dict, config: dict, tidyhq_cache: dict
 ) -> list:
