@@ -572,11 +572,16 @@ def handle_training_tracker_messages(ack, body: dict) -> None:
             )
 
         else:
-            app.client.chat_postMessage(
+            r = app.client.chat_postMessage(
                 channel=config["slack"].get("admin_channel"),
                 text=f":warning: Could not add {debt}h to user, they're not registered on TidyHQ or they're not linked. (Attempted by <@{trainer}>)",
                 thread_ts=body["event"].get("ts"),
                 reply_broadcast=True,
+            )
+
+            # Pin the message
+            app.client.pins_add(
+                channel=config["slack"].get("admin_channel"), timestamp=r.get("ts")
             )
 
 
