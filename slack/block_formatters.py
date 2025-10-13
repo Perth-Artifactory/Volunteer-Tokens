@@ -638,8 +638,7 @@ def modal_statistics(
 
 
 def modal_user_statistics(
-    tidyhq_id: str,
-    volunteer_hours: dict,
+    tidyhq_id: str, volunteer_hours: dict, header: bool = True
 ) -> list[dict]:
     """Generate a modal showing overall volunteer statistics for a specific user."""
 
@@ -670,6 +669,9 @@ def modal_user_statistics(
         block_list=block_list, text=strings.stats_explainer
     )
     block_list = block_formatters.add_block(block_list, blocks.divider)
+
+    if not header:
+        block_list = []
 
     stat_str = ""
     stat_str += f"*Total Hours Volunteered:* {total_hours}h\n"

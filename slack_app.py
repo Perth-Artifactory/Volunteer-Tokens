@@ -382,8 +382,21 @@ def handle_view_as_user_selection(ack: slack_ack, body: dict) -> None:
 
         logging.info(f"Admin {user_id} viewing as user {selected_user_id}")
 
-        # Generate the modal blocks for the selected user
-        block_list = block_formatters.app_home(
+        # Generate the statistic blocks for the selected user
+        tidyhq_id = tidyhq.map_slack_to_tidyhq(
+            tidyhq_cache=tidyhq_cache, config=config, slack_id=selected_user_id
+        )
+
+        stat_blocks = []
+        if tidyhq_id:
+            stat_blocks = block_formatters.modal_user_statistics(
+                tidyhq_id=tidyhq_id,
+                volunteer_hours=volunteer_hours,
+                header=False,
+            )
+
+        # Generate the reward blocks for the selected user
+        reward_blocks = block_formatters.app_home(
             user_id=selected_user_id,
             config=config,
             tidyhq_cache=tidyhq_cache,
@@ -406,7 +419,7 @@ def handle_view_as_user_selection(ack: slack_ack, body: dict) -> None:
                 "type": "modal",
                 "title": {"type": "plain_text", "text": user_name},
                 "close": {"type": "plain_text", "text": "Close"},
-                "blocks": block_list,
+                "blocks": stat_blocks + blocks.divider + reward_blocks,
             },
         )
 
