@@ -362,16 +362,17 @@ def modal_add_hours(mode: str = "admin", user_id: str = "") -> list[dict]:
         "We only actually store the month and year of volunteering, the exact day is discarded"
     )
 
-    # Number input
+    # Hours input
     block_list = block_formatters.add_block(block_list, blocks.number_input)
     block_list[-1]["label"]["text"] = "Number of hours volunteered"
     block_list[-1]["element"]["action_id"] = "hours_input"
     block_list[-1]["block_id"] = "hours_input"
     block_list[-1]["element"]["min_value"] = "1"
     block_list[-1]["element"]["max_value"] = "100"
+    block_list[-1]["element"]["is_decimal_allowed"] = True
     block_list[-1]["hint"] = copy(blocks.base_text)
     block_list[-1]["hint"]["text"] = (
-        "These hours will be added to *all* selected volunteers"
+        "These hours will be added to *all* selected volunteers. Partial hours can be entered as a decimal (e.g. 0.5 for half an hour)"
     )
 
     # Focus on hours input if self logging
@@ -474,6 +475,7 @@ def modal_bulk_add_hours() -> list[dict]:
         block_list[-1]["block_id"] = f"hours_input_{count}"
         block_list[-1]["element"]["min_value"] = "0"
         block_list[-1]["element"]["max_value"] = "100"
+        block_list[-1]["element"]["is_decimal_allowed"] = True
         block_list[-1]["hint"] = copy(blocks.base_text)
         block_list[-1]["hint"]["text"] = (
             "These hours will be added to *all* selected volunteers in this section"

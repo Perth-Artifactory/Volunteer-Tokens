@@ -256,7 +256,7 @@ def handle_bulk_hours_submission(ack: slack_ack, body: dict) -> None:
         if not volunteers:
             count += 1
             continue
-        hours_volunteered = int(
+        hours_volunteered = float(
             data[f"hours_input_{count}"][f"hours_input_{count}"].get("value", 0)
         )
         if not hours_volunteered:
@@ -295,7 +295,7 @@ def handle_hours_submission(ack: slack_ack, body: dict) -> None:
     data = body["view"]["state"]["values"]
 
     volunteers = data["volunteer_select"]["volunteer_select"]["selected_users"]
-    hours_volunteered = int(data["hours_input"]["hours_input"]["value"])
+    hours_volunteered = float(data["hours_input"]["hours_input"]["value"])
     date_raw = data["date_select"]["date_select"]["selected_date"]
     date = datetime.strptime(date_raw, "%Y-%m-%d")
     note = data["note_input"]["note_input"].get("value", "")
