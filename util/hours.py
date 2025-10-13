@@ -110,12 +110,30 @@ def get_badge_streak(tidyhq_id: int | str, volunteer_hours: dict) -> dict:
     return badge_streaks.get(tidyhq_id, {"longest_streak": 0, "current_streak": 0})
 
 
+def get_debt(tidyhq_id: int | str, volunteer_hours: dict) -> int:
+    """Get the time debt for a specified TidyHQ ID.
+
+    Debts bottom out at 0"""
+
+    tidyhq_id = str(tidyhq_id).strip()
+
+    if tidyhq_id not in volunteer_hours:
+        return 0
+
+    total_hours = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
+
+    debt = volunteer_hours[tidyhq_id].get("debt", 0) - total_hours
+
+    return max(debt, 0)
+
+
 def add_hours(
     tidyhq_id: int | str,
     volunteer_hours: dict,
     hours_volunteered: int,
     volunteer_date: datetime,
     tidyhq_cache: dict,
+    debt: bool = False,
 ) -> dict:
     """Add hours to the record for a volunteer"""
 
@@ -123,13 +141,18 @@ def add_hours(
         tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours, tidyhq_cache=tidyhq_cache
     )
 
-    # Add a record for the current month if not present
-    record_str = volunteer_date.strftime(format="%Y-%m")
+    if debt:
+        volunteer_hours[tidyhq_id]["debt"] = (
+            volunteer_hours[tidyhq_id].get("debt", 0) + hours_volunteered
+        )
+    else:
+        # Add a record for the current month if not present
+        record_str = volunteer_date.strftime(format="%Y-%m")
 
-    if record_str not in volunteer_hours[tidyhq_id]["months"]:
-        volunteer_hours[tidyhq_id]["months"][record_str] = 0
+        if record_str not in volunteer_hours[tidyhq_id]["months"]:
+            volunteer_hours[tidyhq_id]["months"][record_str] = 0
 
-    volunteer_hours[tidyhq_id]["months"][record_str] += hours_volunteered
+        volunteer_hours[tidyhq_id]["months"][record_str] += hours_volunteered
 
     # Save the hours back to file
     with open("hours.json", "w") as f:
@@ -148,6 +171,7 @@ def add_hours_with_notifications(
     config: dict,
     app: App,
     user_id: str,
+    debt: bool = False,
 ) -> dict:
     """Add hours to the record for a volunteer and notify them via Slack
 
@@ -204,110 +228,114 @@ def add_hours_with_notifications(
             tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours, month=volunteer_date
         )
 
-        for reward in rewards["monthly"]:
-            if current_hours < reward <= current_hours + hours:
-                # Let the volunteer know
-                slack_misc.send_dm(
-                    slack_id=volunteer,
-                    slack_app=app,
-                    message=f"Congratulations! You've unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {volunteer_date.strftime('%B')}{year_str}!",
-                    blocks=block_formatters.reward_notification(
-                        reward_definition=rewards["monthly"][reward],
-                        hours=reward,
-                        period=volunteer_date.strftime("%B"),
-                    ),
-                )
-                # Let the admin channel know
-                if "admin_channel" in config["slack"]:
-                    app.client.chat_postMessage(
-                        channel=config["slack"]["admin_channel"],
-                        text=f":tada: <@{volunteer}> has unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {volunteer_date.strftime('%B')}{year_str}!",
+        # Skip reward checks if we're adding debt
+        if not debt:
+            for reward in rewards["monthly"]:
+                if current_hours < reward <= current_hours + hours:
+                    # Let the volunteer know
+                    slack_misc.send_dm(
+                        slack_id=volunteer,
+                        slack_app=app,
+                        message=f"Congratulations! You've unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {volunteer_date.strftime('%B')}{year_str}!",
+                        blocks=block_formatters.reward_notification(
+                            reward_definition=rewards["monthly"][reward],
+                            hours=reward,
+                            period=volunteer_date.strftime("%B"),
+                        ),
                     )
+                    # Let the admin channel know
+                    if "admin_channel" in config["slack"]:
+                        app.client.chat_postMessage(
+                            channel=config["slack"]["admin_channel"],
+                            text=f":tada: <@{volunteer}> has unlocked the monthly reward: *{rewards['monthly'][reward]['title']}* for volunteering {reward} hours in {volunteer_date.strftime('%B')}{year_str}!",
+                        )
 
-                # Check if there's a reward function to call
-                if "function" in rewards["monthly"][reward]:
-                    reward_func = rewards_util.get_reward_function(
-                        rewards["monthly"][reward]["function"]
-                    )
-                    if reward_func:
-                        try:
-                            reward_outcome = reward_func(
-                                tidyhq_id=tidyhq_id,
-                                timestamp=volunteer_date,
-                                tidyhq_cache=tidyhq_cache,
-                                config=config,
-                            )
-                        except Exception as e:
-                            logging.error(
-                                f"Reward function {rewards['monthly'][reward]['function']} failed for TidyHQ ID {tidyhq_id}: {e}"
-                            )
-                            reward_outcome = False
+                    # Check if there's a reward function to call
+                    if "function" in rewards["monthly"][reward]:
+                        reward_func = rewards_util.get_reward_function(
+                            rewards["monthly"][reward]["function"]
+                        )
+                        if reward_func:
+                            try:
+                                reward_outcome = reward_func(
+                                    tidyhq_id=tidyhq_id,
+                                    timestamp=volunteer_date,
+                                    tidyhq_cache=tidyhq_cache,
+                                    config=config,
+                                )
+                            except Exception as e:
+                                logging.error(
+                                    f"Reward function {rewards['monthly'][reward]['function']} failed for TidyHQ ID {tidyhq_id}: {e}"
+                                )
+                                reward_outcome = False
 
-                        if not reward_outcome:
-                            logging.error(
-                                f"Reward function {rewards['monthly'][reward]['function']} failed for TidyHQ ID {tidyhq_id}"
-                            )
-
-                            # Let the admin channel know
-                            if "admin_channel" in config["slack"]:
-                                app.client.chat_postMessage(
-                                    channel=config["slack"]["admin_channel"],
-                                    text=f":warning: Reward function *{rewards['monthly'][reward]['function']}* failed for <@{volunteer}> (TidyHQ ID {tidyhq_id})",
+                            if not reward_outcome:
+                                logging.error(
+                                    f"Reward function {rewards['monthly'][reward]['function']} failed for TidyHQ ID {tidyhq_id}"
                                 )
 
-        # Cumulative
-        current_hours = get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
-        for reward in rewards["cumulative"]:
-            if current_hours < reward <= current_hours + hours:
-                # Let the volunteer know
-                slack_misc.send_dm(
-                    slack_id=volunteer,
-                    slack_app=app,
-                    message=f"Congratulations! You've unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
-                    blocks=block_formatters.reward_notification(
-                        reward_definition=rewards["cumulative"][reward],
-                        hours=reward,
-                        period="cumulative",
-                    ),
-                )
+                                # Let the admin channel know
+                                if "admin_channel" in config["slack"]:
+                                    app.client.chat_postMessage(
+                                        channel=config["slack"]["admin_channel"],
+                                        text=f":warning: Reward function *{rewards['monthly'][reward]['function']}* failed for <@{volunteer}> (TidyHQ ID {tidyhq_id})",
+                                    )
 
-                # Let the admin channel know
-                if "admin_channel" in config["slack"]:
-                    app.client.chat_postMessage(
-                        channel=config["slack"]["admin_channel"],
-                        text=f":tada: <@{volunteer}> has unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
+            # Cumulative
+            current_hours = get_total(
+                tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+            )
+            for reward in rewards["cumulative"]:
+                if current_hours < reward <= current_hours + hours:
+                    # Let the volunteer know
+                    slack_misc.send_dm(
+                        slack_id=volunteer,
+                        slack_app=app,
+                        message=f"Congratulations! You've unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
+                        blocks=block_formatters.reward_notification(
+                            reward_definition=rewards["cumulative"][reward],
+                            hours=reward,
+                            period="cumulative",
+                        ),
                     )
 
-                # Check if there's a reward function to call
-                if "function" in rewards["cumulative"][reward]:
-                    reward_func = rewards_util.get_reward_function(
-                        rewards["cumulative"][reward]["function"]
-                    )
-                    if reward_func:
-                        try:
-                            reward_outcome = reward_func(
-                                tidyhq_id=tidyhq_id,
-                                timestamp=volunteer_date,
-                                tidyhq_cache=tidyhq_cache,
-                                config=config,
-                            )
-                        except Exception as e:
-                            logging.error(
-                                f"Reward function {rewards['cumulative'][reward]['function']} failed for TidyHQ ID {tidyhq_id}: {e}"
-                            )
-                            reward_outcome = False
+                    # Let the admin channel know
+                    if "admin_channel" in config["slack"]:
+                        app.client.chat_postMessage(
+                            channel=config["slack"]["admin_channel"],
+                            text=f":tada: <@{volunteer}> has unlocked the lifetime reward: *{rewards['cumulative'][reward]['title']}* for volunteering a total of {reward} hours!",
+                        )
 
-                        if not reward_outcome:
-                            logging.error(
-                                f"Reward function {rewards['cumulative'][reward]['function']} failed for TidyHQ ID {tidyhq_id}"
-                            )
-
-                            # Let the admin channel know
-                            if "admin_channel" in config["slack"]:
-                                app.client.chat_postMessage(
-                                    channel=config["slack"]["admin_channel"],
-                                    text=f":warning: Reward function *{rewards['cumulative'][reward]['function']}* failed for <@{volunteer}> (TidyHQ ID {tidyhq_id})",
+                    # Check if there's a reward function to call
+                    if "function" in rewards["cumulative"][reward]:
+                        reward_func = rewards_util.get_reward_function(
+                            rewards["cumulative"][reward]["function"]
+                        )
+                        if reward_func:
+                            try:
+                                reward_outcome = reward_func(
+                                    tidyhq_id=tidyhq_id,
+                                    timestamp=volunteer_date,
+                                    tidyhq_cache=tidyhq_cache,
+                                    config=config,
                                 )
+                            except Exception as e:
+                                logging.error(
+                                    f"Reward function {rewards['cumulative'][reward]['function']} failed for TidyHQ ID {tidyhq_id}: {e}"
+                                )
+                                reward_outcome = False
+
+                            if not reward_outcome:
+                                logging.error(
+                                    f"Reward function {rewards['cumulative'][reward]['function']} failed for TidyHQ ID {tidyhq_id}"
+                                )
+
+                                # Let the admin channel know
+                                if "admin_channel" in config["slack"]:
+                                    app.client.chat_postMessage(
+                                        channel=config["slack"]["admin_channel"],
+                                        text=f":warning: Reward function *{rewards['cumulative'][reward]['function']}* failed for <@{volunteer}> (TidyHQ ID {tidyhq_id})",
+                                    )
 
         volunteer_hours = add_hours(
             tidyhq_id=tidyhq_id,
@@ -315,10 +343,11 @@ def add_hours_with_notifications(
             hours_volunteered=hours,
             volunteer_hours=volunteer_hours,
             tidyhq_cache=tidyhq_cache,
+            debt=debt,
         )
 
         logging.info(
-            f"Added {hours} hours on {volunteer_date} for TidyHQ ID {tidyhq_id} (Slack ID {volunteer}) {'(Note: ' + note + ')' if note else ''}"
+            f"Added {hours} hours on {volunteer_date} for TidyHQ ID {tidyhq_id} (Slack ID {volunteer}) {'(Note: ' + note + ')' if note else ''} {'as debt' if debt else ''}"
         )
 
         slack_misc.push_home(
@@ -335,10 +364,20 @@ def add_hours_with_notifications(
         # Let the volunteer know
         note_add = f' with the note "{note}"' if note else ""
 
+        if debt:
+            message = f"<@{user_id}> added {hours}h of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
+            current_debt = get_debt(
+                tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
+            )
+            if current_debt > 0:
+                message += f" You now have a total time debt of {current_debt}h. Please remember to repay this debt by volunteering before undertaking further training."
+        else:
+            message = f"<@{user_id}> added {hours}h against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded."
+
         slack_misc.send_dm(
             slack_id=volunteer,
             slack_app=app,
-            message=f"<@{user_id}> added {hours}h against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded.",
+            message=message,
         )
 
     # Let the admin channel know how we went
@@ -352,7 +391,7 @@ def add_hours_with_notifications(
 
         app.client.chat_postMessage(
             channel=config["slack"]["admin_channel"],
-            text=f":white_check_mark: <@{user_id}> added hours for {volunteer_date.strftime('%B')}{year_str}: {user_list}{note_add}",
+            text=f"{':chart_with_downwards_trend:' if debt else ':chart_with_upwards_trend:'} <@{user_id}> added {'debt' if debt else 'hours'} for {volunteer_date.strftime('%B')}{year_str}: {user_list}{note_add}",
         )
 
     if failed:

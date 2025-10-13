@@ -141,6 +141,15 @@ def app_home(
         admin_buttons[-1]["value"] = tidyhq_id
         admin_buttons[-1]["style"] = "primary"
 
+        # Add debt button
+        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
+        admin_buttons = block_formatters.inject_text(
+            block_list=admin_buttons, text="Add time debt"
+        )
+        admin_buttons[-1]["action_id"] = "add_debt"
+        admin_buttons[-1]["value"] = tidyhq_id
+        admin_buttons[-1]["style"] = "danger"
+
         # Add bulk add button
         admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
         admin_buttons = block_formatters.inject_text(
@@ -326,7 +335,9 @@ def welcome_message() -> list[dict]:
     return block_list
 
 
-def modal_add_hours(mode: str = "admin", user_id: str = "") -> list[dict]:
+def modal_add_hours(
+    mode: str = "admin", user_id: str = "", debt: bool = False
+) -> list[dict]:
     """Generate a modal to add hours."""
 
     block_list = []
@@ -352,19 +363,23 @@ def modal_add_hours(mode: str = "admin", user_id: str = "") -> list[dict]:
 
     # Date select
     block_list = block_formatters.add_block(block_list, blocks.date_select)
-    block_list[-1]["label"]["text"] = "Date of volunteering"
+    block_list[-1]["label"]["text"] = (
+        "Date of volunteering" if not debt else "Date of debt incurred"
+    )
     block_list[-1]["element"]["action_id"] = "date_select"
     block_list[-1]["block_id"] = "date_select"
     block_list[-1]["element"]["initial_date"] = datetime.now().strftime("%Y-%m-%d")
     block_list[-1]["element"].pop("placeholder")
     block_list[-1]["hint"] = copy(blocks.base_text)
     block_list[-1]["hint"]["text"] = (
-        "We only actually store the month and year of volunteering, the exact day is discarded"
+        f"We only actually store the month and year of {'volunteering' if not debt else 'debt incurred'}, the exact day is discarded"
     )
 
     # Hours input
     block_list = block_formatters.add_block(block_list, blocks.number_input)
-    block_list[-1]["label"]["text"] = "Number of hours volunteered"
+    block_list[-1]["label"]["text"] = (
+        f"Number of hours {'volunteered' if not debt else 'owed'}"
+    )
     block_list[-1]["element"]["action_id"] = "hours_input"
     block_list[-1]["block_id"] = "hours_input"
     block_list[-1]["element"]["min_value"] = "1"
@@ -385,7 +400,9 @@ def modal_add_hours(mode: str = "admin", user_id: str = "") -> list[dict]:
     block_list[-1]["label"]["text"] = "Optional note"
     block_list[-1]["element"]["action_id"] = "note_input"
     block_list[-1]["block_id"] = "note_input"
-    block_list[-1]["element"]["placeholder"]["text"] = "E.g. 'Volunteered at Arduino U'"
+    block_list[-1]["element"]["placeholder"]["text"] = (
+        "E.g. 'Volunteered at Arduino U'" if not debt else "E.g. 'Tool training'"
+    )
     block_list[-1]["optional"] = True
     block_list[-1]["hint"] = copy(blocks.base_text)
     block_list[-1]["hint"]["text"] = (
@@ -657,6 +674,9 @@ def modal_user_statistics(
         tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
     )
 
+    # Get the user's time debt
+    debt = hours_util.get_debt(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
+
     # Get streak information
     streak = hours_util.get_volunteer_streak(
         tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
@@ -677,6 +697,8 @@ def modal_user_statistics(
 
     stat_str = ""
     stat_str += f"*Total Hours Volunteered:* {total_hours}h\n"
+    if debt > 0:
+        stat_str += f"*Time Debt:* {debt}h (This is the amount of volunteering time you owe to the organisation in exchange for things like tool training)\n"
     stat_str += f"*Hours Last Month:* {last_month_hours}h\n"
     stat_str += f"*Hours This Month:* {this_month_hours}h\n"
     if streak["current_streak"] == streak["longest_streak"]:

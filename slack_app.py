@@ -173,6 +173,25 @@ def modal_add_hours(ack: slack_ack, body: dict) -> None:
     )
 
 
+@app.action("add_debt")
+def modal_add_debt(ack: slack_ack, body: dict) -> None:
+    ack()
+
+    block_list = block_formatters.modal_add_hours(debt=True)
+
+    app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "submit_hours_debt",
+            "title": {"type": "plain_text", "text": "Add Time Debt"},
+            "submit": {"type": "plain_text", "text": "Add"},
+            "close": {"type": "plain_text", "text": "Cancel"},
+            "blocks": block_list,
+        },
+    )
+
+
 @app.action("self_log")
 def modal_self_log(ack: slack_ack, body: dict) -> None:
     ack()
@@ -319,6 +338,45 @@ def handle_hours_submission(ack: slack_ack, body: dict) -> None:
         config=config,
         app=app,
         user_id=user_id,
+    )
+
+
+@app.view("submit_hours_debt")
+def handle_debt_submission(ack: slack_ack, body: dict) -> None:
+    ack()
+
+    global volunteer_hours, tidyhq_cache
+
+    user_id = body["user"]["id"]
+
+    data = body["view"]["state"]["values"]
+
+    volunteers = data["volunteer_select"]["volunteer_select"]["selected_users"]
+    hours_volunteered = float(data["hours_input"]["hours_input"]["value"])
+    date_raw = data["date_select"]["date_select"]["selected_date"]
+    date = datetime.strptime(date_raw, "%Y-%m-%d")
+    note = data["note_input"]["note_input"].get("value", "")
+
+    logging.info(
+        f"Adding {hours_volunteered} hours on {date} for {', '.join(volunteers)} from {user_id} (as debt)"
+    )
+
+    # Format data in a way hours.add_hours_with_notifications can use
+    changes = {}
+    for volunteer in volunteers:
+        changes[volunteer] = hours_volunteered
+
+    tidyhq_cache = hours.add_hours_with_notifications(
+        changes=changes,
+        tidyhq_cache=tidyhq_cache,
+        volunteer_hours=volunteer_hours,
+        volunteer_date=date,
+        note=note,
+        rewards=rewards,
+        config=config,
+        app=app,
+        user_id=user_id,
+        debt=True,
     )
 
 
