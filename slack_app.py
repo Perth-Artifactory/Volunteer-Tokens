@@ -543,9 +543,9 @@ def handle_training_tracker_messages(ack, body: dict) -> None:
                 tidyhq_cache=tidyhq_cache, config=config, contact_id=tidyhq_id
             )
 
-        if slack_id:
-            debt = float(body["event"]["metadata"]["event_payload"].get("hours", 0))
+        debt = float(body["event"]["metadata"]["event_payload"].get("hours", 0))
 
+        if slack_id:
             changes = {slack_id: debt}
 
             tidyhq_cache = hours.add_hours_with_notifications(
@@ -567,6 +567,14 @@ def handle_training_tracker_messages(ack, body: dict) -> None:
             app.client.chat_postMessage(
                 channel=config["slack"].get("admin_channel"),
                 text=f":chart_with_downwards_trend: <@{trainer}> added debt for {volunteer_date.strftime('%B')}: <@{slack_id}> ({debt}h)\n(Note: Training Tracker)",
+                thread_ts=body["event"].get("ts"),
+                reply_broadcast=True,
+            )
+
+        else:
+            app.client.chat_postMessage(
+                channel=config["slack"].get("admin_channel"),
+                text=f":warning: Could not add {debt}h to user, they're not registered on TidyHQ or they're not linked. (Attempted by <@{trainer}>)",
                 thread_ts=body["event"].get("ts"),
                 reply_broadcast=True,
             )
