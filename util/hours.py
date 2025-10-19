@@ -387,7 +387,7 @@ def add_hours_with_notifications(
     if successful and send_to_channel:
         user_list = ""
         for volunteer in successful:
-            user_list += f", <@{volunteer}> ({changes[volunteer]}h)"
+            user_list += f", <@{volunteer}> ({changes[volunteer]:,g}h)"
         user_list = user_list[2:]
 
         app.client.chat_postMessage(
