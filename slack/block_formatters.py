@@ -273,7 +273,7 @@ def reward_tier(
         lines[-1] += f" ({required_hours}h)"
     else:
         lines.append(
-            f"{emoji} {current_hours if not achieved else required_hours}/{required_hours}h"
+            f"{emoji} {(current_hours if not achieved else required_hours):,g}/{required_hours}h"
         )
     if not achieved:
         lines[-1] += f" - {required_hours - current_hours}h to go!"
@@ -537,10 +537,10 @@ def modal_statistics(
     summary_text = f"*Total Hours:* {stats['total_hours']:,}h\n"
     summary_text += f"*Total Volunteers:* {stats['total_volunteers']} registered\n"
     summary_text += (
-        f"*Average Hours per Volunteer:* {stats['average_hours_per_volunteer']}h"
+        f"*Average Hours per Volunteer:* {stats['average_hours_per_volunteer']:,g}h"
     )
     summary_text += (
-        f" ({stats['average_hours_per_volunteer_no_admin']}h excl. committee)"
+        f" ({stats['average_hours_per_volunteer_no_admin']:,g}h excl. committee)"
     )
 
     block_list = block_formatters.inject_text(block_list=block_list, text=summary_text)
@@ -560,7 +560,7 @@ def modal_statistics(
             3: ":third_place_medal:",
         }
         for i, volunteer in enumerate(top_volunteers, 1):
-            top_text += f"{emoji.get(i, ':medal:')} *{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+            top_text += f"{emoji.get(i, ':medal:')} *{volunteer['name']}* - {volunteer['total_hours']:,g} hours\n"
 
         block_list = block_formatters.add_block(block_list, blocks.text)
         block_list = block_formatters.inject_text(
@@ -576,7 +576,7 @@ def modal_statistics(
 
     non_admin_text = ""
     for i, volunteer in enumerate(non_admin_volunteers, 1):
-        non_admin_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['total_hours']} hours\n"
+        non_admin_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['total_hours']:,g} hours\n"
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
@@ -601,7 +601,7 @@ def modal_statistics(
             month_name = month_date.strftime("%B %Y")
         except ValueError:
             month_name = month_str
-        monthly_text += f"• *{month_name}:* {month_hours}h\n"
+        monthly_text += f"• *{month_name}:* {month_hours:,g}h\n"
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
@@ -647,7 +647,7 @@ def modal_statistics(
     all_text = ""
     for i, volunteer in enumerate(all_volunteers, 1):
         linked_name = f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>"
-        all_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_hours']} hours\n"
+        all_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_hours']:,g} hours\n"
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
@@ -665,7 +665,7 @@ def modal_statistics(
     if volunteers_with_debt:
         for i, volunteer in enumerate(volunteers_with_debt, 1):
             linked_name = f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>"
-            debt_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_debt']}h\n"
+            debt_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_debt']:,g}h\n"
 
     else:
         debt_text = "No volunteers currently owe any time debt. Hooray!"
@@ -718,11 +718,11 @@ def modal_user_statistics(
         block_list = []
 
     stat_str = ""
-    stat_str += f"*Total Hours Volunteered:* {total_hours}h\n"
+    stat_str += f"*Total Hours Volunteered:* {total_hours:,g}h\n"
     if debt > 0:
-        stat_str += f"*Time Debt:* {debt}h (This is the amount of volunteering time you owe to the organisation in exchange for things like tool training)\n"
-    stat_str += f"*Hours Last Month:* {last_month_hours}h\n"
-    stat_str += f"*Hours This Month:* {this_month_hours}h\n"
+        stat_str += f"*Time Debt:* {debt:,g}h (This is the amount of volunteering time you owe to the organisation in exchange for things like tool training)\n"
+    stat_str += f"*Hours Last Month:* {last_month_hours:,g}h\n"
+    stat_str += f"*Hours This Month:* {this_month_hours:,g}h\n"
     if streak["current_streak"] == streak["longest_streak"]:
         stat_str += f"*Current Monthly Streak:* {streak['current_streak']} months (Your longest yet!)\n"
     else:
