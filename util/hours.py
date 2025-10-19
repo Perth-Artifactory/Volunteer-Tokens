@@ -366,14 +366,14 @@ def add_hours_with_notifications(
         note_add = f' with the note "{note}"' if note else ""
 
         if debt:
-            message = f"<@{user_id}> added {hours}h of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
+            message = f"<@{user_id}> added {hours:,g}h of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
             current_debt = get_debt(
                 tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
             )
             if current_debt > 0:
                 message += f" You now have a total time debt of {current_debt}h. Please remember to repay this debt by volunteering before undertaking further training."
         else:
-            message = f"<@{user_id}> added {hours}h against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded."
+            message = f"<@{user_id}> added {hours:,g}h against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!\nThere's no need to add tokens to the tub for these hours, they're already recorded."
 
         slack_misc.send_dm(
             slack_id=volunteer,
@@ -399,7 +399,7 @@ def add_hours_with_notifications(
         for volunteer in failed:
             m = app.client.chat_postMessage(
                 channel=config["slack"]["admin_channel"],
-                text=f":warning: Could not add {changes[volunteer]}h to <@{volunteer}>, they're not registered on TidyHQ or they're not linked. (Attempted by <@{user_id}>){note_add}",
+                text=f":warning: Could not add {changes[volunteer]:,g}h to <@{volunteer}>, they're not registered on TidyHQ or they're not linked. (Attempted by <@{user_id}>){note_add}",
             )
             app.client.pins_add(
                 channel=config["slack"]["admin_channel"], timestamp=m["ts"]
