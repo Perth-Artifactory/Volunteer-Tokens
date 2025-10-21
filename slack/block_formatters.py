@@ -397,7 +397,7 @@ def modal_add_hours(
 
     # Note input
     block_list = block_formatters.add_block(block_list, blocks.text_question)
-    block_list[-1]["label"]["text"] = "Optional note"
+    block_list[-1]["label"]["text"] = "Note"
     block_list[-1]["element"]["action_id"] = "note_input"
     block_list[-1]["block_id"] = "note_input"
     block_list[-1]["element"]["placeholder"]["text"] = (
@@ -467,7 +467,7 @@ def modal_bulk_add_hours() -> list[dict]:
 
     # Note input
     block_list = block_formatters.add_block(block_list, blocks.text_question)
-    block_list[-1]["label"]["text"] = "Optional note"
+    block_list[-1]["label"]["text"] = "Note"
     block_list[-1]["element"]["action_id"] = "note_input"
     block_list[-1]["block_id"] = "note_input"
     block_list[-1]["element"]["placeholder"]["text"] = "E.g. 'Volunteered at Arduino U'"
