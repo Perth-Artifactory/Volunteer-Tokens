@@ -871,7 +871,7 @@ def modal_statistics(
         )
 
     else:
-        block_list = block_formatters.add_block(
+        block_list = block_formatters.add_element(
             block_list,
             block_formatters.construct_rich_text(
                 ["No volunteers currently have time debt. Great job everyone!"]
