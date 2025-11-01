@@ -483,7 +483,7 @@ def reward_tier(
             f"{emoji} {(current_hours if not achieved else required_hours):,g}/{required_hours}h"
         )
     if not achieved:
-        lines[-1] += f" - {required_hours - current_hours}h to go!"
+        lines[-1] += f" - {required_hours - current_hours:,g}h to go!"
     lines.append(f"{reward_definition['description']}")
 
     block_list = block_formatters.inject_text(
