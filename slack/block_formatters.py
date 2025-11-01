@@ -509,22 +509,19 @@ def modal_statistics(
 ) -> list[dict]:
     """Generate a modal showing overall volunteer statistics."""
 
-    from datetime import datetime
-    from util import hours as hours_util
-
     block_list = []
 
     # Get statistics
-    stats = hours_util.get_overall_statistics(
+    stats = hours.get_overall_statistics(
         volunteer_hours, config=config, tidyhq_cache=tidyhq_cache
     )
-    top_volunteers = hours_util.get_top_volunteers(volunteer_hours)
-    all_volunteers = hours_util.get_all_volunteers(volunteer_hours)
-    volunteers_with_debt = hours_util.get_all_debt(volunteer_hours)
-    non_admin_volunteers = hours_util.get_non_admin_volunteers(
+    top_volunteers = hours.get_top_volunteers(volunteer_hours)
+    all_volunteers = hours.get_all_volunteers(volunteer_hours)
+    volunteers_with_debt = hours.get_all_debt(volunteer_hours)
+    non_admin_volunteers = hours.get_non_admin_volunteers(
         volunteer_hours, config, tidyhq_cache
     )
-    badge_streak = hours_util.get_volunteer_badge_streaks(volunteer_hours)
+    badge_streak = hours.get_volunteer_badge_streaks(volunteer_hours)
 
     # Header
     block_list = block_formatters.add_block(block_list, blocks.header)
