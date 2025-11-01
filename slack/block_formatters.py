@@ -11,7 +11,9 @@ from util import tidyhq, misc, hours
 logger = logging.getLogger("slack.block_formatters")
 
 
-def inject_text(block_list: list, text: str, rich_text_block=False) -> list[dict]:
+def inject_text(
+    block_list: list, text: str, rich_text_block: bool = False
+) -> list[dict]:
     """Injects text into the last block in the block list and returns the updated list.
 
     Is aware of most block types and should inject in the appropriate place
@@ -124,7 +126,7 @@ def construct_rich_list(items: list) -> dict:
     - A string, which will be added as a simple text element
     - A list, which will be treated as a list of subitems, each of which can be:
         - A string, which will be added as a simple text element
-        - A list, which will be treated as [text, style, style2], where style/style2 are formatting options like "bold", "italic"
+        - A list, which will be treated as [text, style, style2], where style/style2 are formatting options like "bold", "italic". The text will formatted as emoji if surrounded by :. In this instance styling will be ignored.
         - A dict, which will be treated as a url provided it has the keys "url": str, "text": str (optional), "style": list (optional)
     """
 
@@ -151,10 +153,15 @@ def construct_rich_list(items: list) -> dict:
                     section["elements"].append(copy(blocks.rich_text_section_text))
                     section["elements"][-1]["text"] = subitem
                 elif isinstance(subitem, list):
+                    # Check for emoji
+                    if subitem[0].startswith(":") and subitem[0].endswith(":"):
+                        section["elements"].append(copy(blocks.rich_text_section_emoji))
+                        section["elements"][-1]["name"] = subitem[0][1:-1]
+                        continue
+
                     section["elements"].append(copy(blocks.rich_text_section_text))
                     section["elements"][-1]["text"] = subitem[0]
                     # Even list subitems don't necessarily have to have styling
-                    # Though if they don't, they could have also just been passed as a string
                     if len(subitem) > 1:
                         section["elements"][-1]["style"] = {}
                         for style in subitem[1:]:
@@ -181,8 +188,16 @@ def construct_rich_list(items: list) -> dict:
     return li
 
 
-def construct_rich_text(text: list) -> dict:
-    """Constructs a rich text block from a list of strings (with style support)."""
+def construct_rich_text(text: list[str | list | dict]) -> dict:
+    """Constructs a rich text block from a list of strings (with style support).
+
+    Each item in the list should be:
+
+    - A string, which will be added as a simple text element
+    - A list, which will be treated as a list of subitems, each of which can be:
+        - A string, which will be added as a simple text element
+        - A list, which will be treated as [text, style, style2], where style/style2 are formatting options like "bold", "italic". The text will formatted as emoji if surrounded by :. In this instance styling will be ignored.
+        - A dict, which will be treated as a url provided it has the keys "url": str, "text": str (optional), "style": list (optional)"""
 
     rich_text_block = copy(blocks.rich_text_section)
 
@@ -195,19 +210,48 @@ def construct_rich_text(text: list) -> dict:
         elif isinstance(item, list):
             # We assume that the items are stored as [text, style, style2]
             for subitem in item:
-                rich_text_block["elements"].append(copy(blocks.rich_text_section_text))
-
                 # Subitems can either be a string or a list
                 if isinstance(subitem, str):
+                    rich_text_block["elements"].append(
+                        copy(blocks.rich_text_section_text)
+                    )
                     rich_text_block["elements"][-1]["text"] = subitem
-                else:
+                elif isinstance(subitem, list):
+                    rich_text_block["elements"].append(
+                        copy(blocks.rich_text_section_text)
+                    )
+                    # Check for emoji
+                    if subitem[0].startswith(":") and subitem[0].endswith(":"):
+                        rich_text_block["elements"][-1] = copy(
+                            blocks.rich_text_section_emoji
+                        )
+                        rich_text_block["elements"][-1]["name"] = subitem[0][1:-1]
+                        continue
                     rich_text_block["elements"][-1]["text"] = subitem[0]
                     # Even list subitems don't necessarily have to have styling
-                    # Though if they don't, they could have also just been passed as a string
                     if len(subitem) > 1:
                         rich_text_block["elements"][-1]["style"] = {}
                         for style in subitem[1:]:
                             rich_text_block["elements"][-1]["style"][style] = True
+                elif isinstance(subitem, dict):
+                    if "url" not in subitem:
+                        logger.warning(
+                            "Tried to add a dict subitem to a rich text block without a url key, skipped"
+                        )
+                        continue
+
+                    rich_text_block["elements"].append(
+                        copy(blocks.rich_text_section_link)
+                    )
+
+                    rich_text_block["elements"][-1]["url"] = subitem["url"]
+                    rich_text_block["elements"][-1]["text"] = subitem.get(
+                        "text", subitem["url"]
+                    )
+                    for style in subitem.get("style", []):
+                        if "style" not in rich_text_block["elements"][-1]:
+                            rich_text_block["elements"][-1]["style"] = {}
+                        rich_text_block["elements"][-1]["style"][style] = True
     return rich_text_block
 
 
@@ -723,7 +767,6 @@ def modal_statistics(
         block_list=block_list, text="🏆 Top 5 Volunteers"
     )
     block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
-    rich_text_elements = []
 
     list_items = []
     for volunteer in top_volunteers:
@@ -806,11 +849,10 @@ def modal_statistics(
                 [
                     [f"{volunteer['name']}", "bold"],
                     f" - {volunteer['longest_streak']}m",
-                    " :star:"
-                    if volunteer["current_streak"] == volunteer["longest_streak"]
-                    else " ",
                 ]
             )
+            if volunteer["current_streak"] == volunteer["longest_streak"]:
+                list_items[-1].append([":star:"])
 
     block_list = block_formatters.add_element(
         block_list, block_formatters.construct_rich_list(list_items)
