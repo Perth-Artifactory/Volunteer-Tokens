@@ -149,3 +149,55 @@ number_input = {
 }
 
 base_text = {"type": "plain_text", "text": ""}
+
+# Rich text
+
+rich_text_container = {
+    "type": "rich_text",
+    "elements": [],
+}
+
+rich_text_section = {"type": "rich_text_section", "elements": []}
+
+rich_text_list = {
+    "type": "rich_text_list",
+    "style": "bullet",  # or "ordered"
+    "elements": [],  # list of rich_text_sections
+}
+
+rich_text_preformatted = {
+    "type": "rich_text_preformatted",
+    "elements": [],  # list of text elements
+}
+
+rich_text_quote = {
+    "type": "rich_text_quote",
+    "elements": [],  # list of text elements
+}
+
+rich_text_section_broadcast = {
+    "type": "broadcast",
+    "range": "",  # here, channel, everyone
+}
+
+rich_text_section_colour = {
+    "type": "colour",
+    "color": "",  # hex color code
+}
+
+rich_text_section_channel = {"type": "channel", "channel_id": ""}
+
+rich_text_section_date = {
+    "type": "date",
+    "date": "",  # epoch timestamp
+    "format": "",  # format string
+}
+rich_text_section_emoji = {"type": "emoji", "name": ""}
+
+rich_text_section_link = {"type": "link", "url": ""}
+
+rich_text_section_text = {"type": "text", "text": ""}
+
+rich_text_section_user = {"type": "user", "user_id": ""}
+
+rich_text_section_usergroup = {"type": "usergroup", "usergroup_id": ""}

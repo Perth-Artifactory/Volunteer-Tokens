@@ -6,6 +6,7 @@
         "submodal",
         "tidyhq",
         "tidyproxy",
+        "usergroup",
         "YYMM"
     ],
     "sonarlint.connectedMode.project": {

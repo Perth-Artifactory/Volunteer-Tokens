@@ -11,13 +11,44 @@ from util import tidyhq, misc, hours
 logger = logging.getLogger("slack.block_formatters")
 
 
-def inject_text(block_list: list, text: str) -> list[dict]:
+def inject_text(block_list: list, text: str, rich_text_block=False) -> list[dict]:
     """Injects text into the last block in the block list and returns the updated list.
 
     Is aware of most block types and should inject in the appropriate place
     """
 
     block_list = copy(block_list)
+
+    if rich_text_block:
+        if "text" not in block_list[-1]["elements"][-1]:
+            logger.warning(
+                "Injecting text into a rich text block without a text element, skipped"
+            )
+            return block_list
+        else:
+            field_maps = {
+                "broadcast": "range",
+                "color": "value",
+                "channel": "channel_id",
+                "emoji": "name",
+                "link": "url",
+                "text": "text",
+                "user": "user_id",
+                "usergroup": "usergroup_id",
+            }
+            el_type = block_list[-1]["elements"][-1]["type"]
+            if el_type == "date":
+                logger.warning(
+                    "Injecting text into a rich text date element, requires multiple fields, skipped"
+                )
+            elif el_type in field_maps:
+                block_list[-1]["elements"][-1][field_maps[el_type]] = text
+            else:
+                logger.warning(
+                    f"Injecting text into a rich text element of unknown type {el_type}, skipped"
+                )
+        return block_list
+
     if block_list[-1]["type"] in ["section", "header", "button"]:
         block_list[-1]["text"]["text"] = text
     elif block_list[-1]["type"] in ["context"]:
@@ -46,6 +77,138 @@ def add_block(block_list: list, block: dict | list) -> list[dict]:
         logger.info(f"Block list too long {len(block_list)}/100")
 
     return block_list
+
+
+def add_element(
+    block_list: list[dict], element: dict | list, prepend: bool = False
+) -> list[dict]:
+    """Adds an element or list of elements to the elements list in the last item of the block list
+
+    Can prepend or append the element."""
+
+    block_list = copy(block_list)
+    element = copy(element)
+
+    if "elements" in block_list[-1]:
+        if prepend:
+            if isinstance(element, list):
+                block_list[-1]["elements"] = element + block_list[-1]["elements"]
+            else:
+                block_list[-1]["elements"].insert(0, element)
+        else:
+            if isinstance(element, list):
+                block_list[-1]["elements"] += element
+            else:
+                block_list[-1]["elements"].append(element)
+    elif "element" in block_list[-1]:
+        if not block_list[-1]["element"]:
+            block_list[-1]["element"] = element
+        else:
+            logger.warning(
+                "Tried to add an element to a block that supports a single element that was already populated, skipped"
+            )
+    else:
+        logger.warning(
+            "Tried to add an element to a block that doesn't support elements, skipped"
+        )
+        pprint(block_list[-1])
+
+    return block_list
+
+
+def construct_rich_list(items: list) -> dict:
+    """Constructs a rich text list block from a list of strings (with style/url support).
+
+    Each item in the list should be:
+
+    - A string, which will be added as a simple text element
+    - A list, which will be treated as a list of subitems, each of which can be:
+        - A string, which will be added as a simple text element
+        - A list, which will be treated as [text, style, style2], where style/style2 are formatting options like "bold", "italic"
+        - A dict, which will be treated as a url provided it has the keys "url": str, "text": str (optional), "style": list (optional)
+    """
+
+    li = copy(blocks.rich_text_list)
+
+    for item in items:
+        # Check item type
+        if isinstance(item, str):
+            section = copy(blocks.rich_text_section)
+
+            # Add a text element to the section
+            section["elements"].append(copy(blocks.rich_text_section_text))
+            section["elements"][-1]["text"] = item
+
+            li["elements"].append(section)
+        elif isinstance(item, list):
+            section = copy(blocks.rich_text_section)
+
+            # We assume that the items are stored as:
+            # [text] - tex, style, style2]
+            for subitem in item:
+                # Subitems can be a string, list or dict
+                if isinstance(subitem, str):
+                    section["elements"].append(copy(blocks.rich_text_section_text))
+                    section["elements"][-1]["text"] = subitem
+                elif isinstance(subitem, list):
+                    section["elements"].append(copy(blocks.rich_text_section_text))
+                    section["elements"][-1]["text"] = subitem[0]
+                    # Even list subitems don't necessarily have to have styling
+                    # Though if they don't, they could have also just been passed as a string
+                    if len(subitem) > 1:
+                        section["elements"][-1]["style"] = {}
+                        for style in subitem[1:]:
+                            section["elements"][-1]["style"][style] = True
+                elif isinstance(subitem, dict):
+                    if "url" not in subitem:
+                        logger.warning(
+                            "Tried to add a dict subitem to a rich text list without a url key, skipped"
+                        )
+                        continue
+
+                    section["elements"].append(copy(blocks.rich_text_section_link))
+
+                    section["elements"][-1]["url"] = subitem["url"]
+                    section["elements"][-1]["text"] = subitem.get(
+                        "text", subitem["url"]
+                    )
+                    for style in subitem.get("style", []):
+                        if "style" not in section["elements"][-1]:
+                            section["elements"][-1]["style"] = {}
+                        section["elements"][-1]["style"][style] = True
+
+            li["elements"].append(section)
+    return li
+
+
+def construct_rich_text(text: list) -> dict:
+    """Constructs a rich text block from a list of strings (with style support)."""
+
+    rich_text_block = copy(blocks.rich_text_section)
+
+    for item in text:
+        # Check item type
+        if isinstance(item, str):
+            # Add a text element to the section
+            rich_text_block["elements"].append(copy(blocks.rich_text_section_text))
+            rich_text_block["elements"][-1]["text"] = item
+        elif isinstance(item, list):
+            # We assume that the items are stored as [text, style, style2]
+            for subitem in item:
+                rich_text_block["elements"].append(copy(blocks.rich_text_section_text))
+
+                # Subitems can either be a string or a list
+                if isinstance(subitem, str):
+                    rich_text_block["elements"][-1]["text"] = subitem
+                else:
+                    rich_text_block["elements"][-1]["text"] = subitem[0]
+                    # Even list subitems don't necessarily have to have styling
+                    # Though if they don't, they could have also just been passed as a string
+                    if len(subitem) > 1:
+                        rich_text_block["elements"][-1]["style"] = {}
+                        for style in subitem[1:]:
+                            rich_text_block["elements"][-1]["style"][style] = True
+    return rich_text_block
 
 
 def compress_blocks(block_list: list[dict]) -> list:
@@ -509,8 +672,6 @@ def modal_statistics(
 ) -> list[dict]:
     """Generate a modal showing overall volunteer statistics."""
 
-    block_list = []
-
     # Get statistics
     stats = hours.get_overall_statistics(
         volunteer_hours, config=config, tidyhq_cache=tidyhq_cache
@@ -523,46 +684,58 @@ def modal_statistics(
     )
     badge_streak = hours.get_volunteer_badge_streaks(volunteer_hours)
 
+    block_list = []
+
     # Header
     block_list = block_formatters.add_block(block_list, blocks.header)
     block_list = block_formatters.inject_text(
         block_list=block_list, text="Overall Volunteer Statistics"
     )
 
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+
     # Overall summary
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    summary_text = f"*Total Hours:* {stats['total_hours']:,}h\n"
-    summary_text += f"*Total Volunteers:* {stats['total_volunteers']} registered\n"
-    summary_text += (
-        f"*Average Hours per Volunteer:* {stats['average_hours_per_volunteer']:,g}h"
+    summary_stats = []
+    summary_stats.append([["Total Hours", "bold"], f": {stats['total_hours']:,}h\n"])
+    summary_stats.append(
+        [["Total Volunteers", "bold"], f": {stats['total_volunteers']}\n"]
     )
-    summary_text += (
-        f" ({stats['average_hours_per_volunteer_no_admin']:,g}h excl. committee)"
+    summary_stats.append(
+        [
+            ["Average Hours per Volunteer", "bold"],
+            f": {stats['average_hours_per_volunteer']:,g}h",
+            [
+                f" ({stats['average_hours_per_volunteer_no_admin']:,g}h excl. committee)",
+                "italic",
+            ],
+        ]
     )
 
-    block_list = block_formatters.inject_text(block_list=block_list, text=summary_text)
+    block_list = block_formatters.add_element(
+        block_list, block_formatters.construct_rich_text(summary_stats)
+    )
 
     # Top volunteers section (Top 5)
-    if top_volunteers:
-        block_list = block_formatters.add_block(block_list, blocks.divider)
-        block_list = block_formatters.add_block(block_list, blocks.header)
-        block_list = block_formatters.inject_text(
-            block_list=block_list, text="🏆 Top 5 Volunteers"
+
+    block_list = block_formatters.add_block(block_list, blocks.divider)
+    block_list = block_formatters.add_block(block_list, blocks.header)
+    block_list = block_formatters.inject_text(
+        block_list=block_list, text="🏆 Top 5 Volunteers"
+    )
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+    rich_text_elements = []
+
+    list_items = []
+    for volunteer in top_volunteers:
+        list_items.append(
+            [[volunteer["name"], "bold"], f" - {volunteer['total_hours']:,g} hours"]
         )
 
-        top_text = ""
-        emoji = {
-            1: ":first_place_medal:",
-            2: ":second_place_medal:",
-            3: ":third_place_medal:",
-        }
-        for i, volunteer in enumerate(top_volunteers, 1):
-            top_text += f"{emoji.get(i, ':medal:')} *{volunteer['name']}* - {volunteer['total_hours']:,g} hours\n"
+    block_list = block_formatters.add_element(
+        block_list, block_formatters.construct_rich_list(list_items)
+    )
 
-        block_list = block_formatters.add_block(block_list, blocks.text)
-        block_list = block_formatters.inject_text(
-            block_list=block_list, text=top_text.strip()
-        )
+    block_list[-1]["elements"][0]["style"] = "ordered"
 
     # Non-admin volunteers leaderboard
     block_list = block_formatters.add_block(block_list, blocks.divider)
@@ -570,15 +743,22 @@ def modal_statistics(
     block_list = block_formatters.inject_text(
         block_list=block_list, text="👥 Volunteers (Excluding Committee)"
     )
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+    list_items = []
 
-    non_admin_text = ""
-    for i, volunteer in enumerate(non_admin_volunteers, 1):
-        non_admin_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['total_hours']:,g} hours\n"
+    for volunteer in non_admin_volunteers:
+        list_items.append(
+            [
+                [f"{volunteer['name']}", "bold"],
+                f" - {volunteer['total_hours']:,g} hours",
+            ]
+        )
 
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    block_list = block_formatters.inject_text(
-        block_list=block_list, text=non_admin_text.strip()
+    block_list = block_formatters.add_element(
+        block_list, block_formatters.construct_rich_list(list_items)
     )
+
+    block_list[-1]["elements"][0]["style"] = "ordered"
 
     # Hours by month
     block_list = block_formatters.add_block(block_list, blocks.divider)
@@ -587,22 +767,24 @@ def modal_statistics(
         block_list=block_list, text="📅 Hours by Month"
     )
 
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+    list_items = []
+
     # Trim to last 12 months
     month_items = list(stats["hours_by_month"].items())
     recent_months = month_items[:12] if len(month_items) > 12 else month_items
 
-    monthly_text = ""
     for month_str, month_hours in recent_months:
         try:
             month_date = datetime.strptime(month_str, "%Y-%m")
             month_name = month_date.strftime("%B %Y")
         except ValueError:
             month_name = month_str
-        monthly_text += f"• *{month_name}:* {month_hours:,g}h\n"
 
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    block_list = block_formatters.inject_text(
-        block_list=block_list, text=monthly_text.strip()
+        list_items.append([[f"{month_name}:", "bold"], f" {month_hours:,g}h"])
+
+    block_list = block_formatters.add_element(
+        block_list, block_formatters.construct_rich_list(list_items)
     )
 
     # Badge streak leaderboard
@@ -612,22 +794,28 @@ def modal_statistics(
         block_list=block_list, text="Longest :artifactory2-black: Streaks"
     )
 
-    streak_text = ""
-    for i, volunteer in enumerate(
-        sorted(
-            badge_streak.values(),
-            key=lambda x: x["longest_streak"],
-            reverse=True,
-        ),
-        1,
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+    list_items = []
+    for volunteer in sorted(
+        badge_streak.values(),
+        key=lambda x: x["longest_streak"],
+        reverse=True,
     ):
         if volunteer["longest_streak"] > 0:
-            streak_text += f"{i}. {' ' if i < 10 else ''}*{volunteer['name']}* - {volunteer['longest_streak']}m {':star:' if volunteer['current_streak'] == volunteer['longest_streak'] else ''}\n"
+            list_items.append(
+                [
+                    [f"{volunteer['name']}", "bold"],
+                    f" - {volunteer['longest_streak']}m",
+                    " :star:"
+                    if volunteer["current_streak"] == volunteer["longest_streak"]
+                    else " ",
+                ]
+            )
 
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    block_list = block_formatters.inject_text(
-        block_list=block_list, text=streak_text.strip()
+    block_list = block_formatters.add_element(
+        block_list, block_formatters.construct_rich_list(list_items)
     )
+    block_list[-1]["elements"][0]["style"] = "ordered"
     block_list = block_formatters.add_block(block_list, blocks.context)
     block_list = block_formatters.inject_text(
         block_list=block_list,
@@ -641,15 +829,22 @@ def modal_statistics(
         block_list=block_list, text="📋 Complete Leaderboard"
     )
 
-    all_text = ""
-    for i, volunteer in enumerate(all_volunteers, 1):
-        linked_name = f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>"
-        all_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_hours']:,g} hours\n"
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+    list_items = []
 
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    block_list = block_formatters.inject_text(
-        block_list=block_list, text=all_text.strip()
+    for volunteer in all_volunteers:
+        linked_name = {
+            "url": f"https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}",
+            "text": volunteer["name"],
+            "style": ["bold"],
+        }
+        list_items.append([linked_name, f" - {volunteer['total_hours']:,g} hours"])
+
+    block_list = block_formatters.add_element(
+        block_list, block_formatters.construct_rich_list(list_items)
     )
+
+    block_list[-1]["elements"][0]["style"] = "ordered"
 
     # Debt leaderboard
     block_list = block_formatters.add_block(block_list, blocks.divider)
@@ -658,19 +853,30 @@ def modal_statistics(
         block_list=block_list, text="⏳ Time Debt Owed"
     )
 
-    debt_text = ""
+    block_list = block_formatters.add_block(block_list, blocks.rich_text_container)
+
     if volunteers_with_debt:
-        for i, volunteer in enumerate(volunteers_with_debt, 1):
-            linked_name = f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>"
-            debt_text += f"{i}. {' ' if i < 10 else ''}*{linked_name}* - {volunteer['total_debt']:,g}h\n"
+        list_items = []
+
+        for volunteer in volunteers_with_debt:
+            linked_name = {
+                "url": f"<https://artifactory.tidyhq.com/contacts/{volunteer['tidyhq_id']}|{volunteer['name']}>",
+                "text": volunteer["name"],
+                "style": ["bold"],
+            }
+            list_items.append([linked_name, f" - {volunteer['total_debt']:,g}h"])
+
+        block_list = block_formatters.add_element(
+            block_list, block_formatters.construct_rich_list(list_items)
+        )
 
     else:
-        debt_text = "No volunteers currently owe any time debt. Hooray!"
-
-    block_list = block_formatters.add_block(block_list, blocks.text)
-    block_list = block_formatters.inject_text(
-        block_list=block_list, text=debt_text.strip()
-    )
+        block_list = block_formatters.add_block(
+            block_list,
+            block_formatters.construct_rich_text(
+                ["No volunteers currently have time debt. Great job everyone!"]
+            ),
+        )
 
     return block_list
 

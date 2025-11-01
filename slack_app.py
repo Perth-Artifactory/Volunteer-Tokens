@@ -388,15 +388,20 @@ def modal_admin_statistics(ack: slack_ack, body: dict) -> None:
         volunteer_hours, config, tidyhq_cache
     )
 
-    app.client.views_open(
-        trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "title": {"type": "plain_text", "text": "Volunteer Statistics"},
-            "close": {"type": "plain_text", "text": "Close"},
-            "blocks": block_list,
-        },
-    )
+    try:
+        app.client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "title": {"type": "plain_text", "text": "Volunteer Statistics"},
+                "close": {"type": "plain_text", "text": "Close"},
+                "blocks": block_list,
+            },
+        )
+    except SlackApiError as e:
+        logging.error(f"Error opening admin statistics modal: {e.response['error']}")
+        logging.error(f"Full response: {e.response}")
+        pprint(block_list)
 
 
 @app.action("user_statistics")
