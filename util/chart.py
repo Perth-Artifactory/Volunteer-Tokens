@@ -45,6 +45,7 @@ def individual_hours_chart(
     qc.width = 500
     qc.height = 300
     qc.version = "2"
+    qc.background_color = "rgba(26, 29, 33, 1)"  # Match Slack dark mode
 
     # Config can be set as a string or as a nested dict
     conf = """{
@@ -57,7 +58,7 @@ def individual_hours_chart(
         borderColor: getGradientFillHelper('vertical', ['#eb3639', '#a336eb', '#36a2eb']),
         borderWidth: 5,
         pointRadius: 5, // need points visible for labels
-        backgroundColor: 'rgba(0, 0, 0, 0.1)', // Transparent background color for datasets
+        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
         }]
     },
     options: {
@@ -78,7 +79,7 @@ def individual_hours_chart(
             display: false,
             },
             ticks: {
-            fontColor: '#777'
+            fontColor: '#fff'
             }
         }],
         yAxes: [{
@@ -92,7 +93,7 @@ def individual_hours_chart(
         datalabels: {
             align: 'top',
             anchor: 'end',
-            color: '#777',
+            color: '#fff',
             font: {
             weight: 'bold',
             size: 12
