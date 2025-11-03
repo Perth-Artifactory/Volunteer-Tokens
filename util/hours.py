@@ -369,14 +369,14 @@ def add_hours_with_notifications(
         address = "<@{user_id}>" if volunteer != user_id else "You"
 
         if debt:
-            message = f"{address} added {hours:,g}h of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
+            message = f"{address} added {h_format(hours)} of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
             current_debt = get_debt(
                 tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
             )
             if current_debt > 0:
-                message += f" You now have a total time debt of {current_debt}h. Please remember to repay this debt by volunteering before undertaking further training."
+                message += f" You now have a total time debt of {h_format(current_debt)}. Please remember to repay this debt by volunteering before undertaking further training."
         else:
-            message = f"{address} added {hours:,g}h against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!{"\nThere's no need to add tokens to the tub for these hours, they're already recorded." if volunteer != user_id else ''}"
+            message = f"{address} added {h_format(hours)} against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!{"\nThere's no need to add tokens to the tub for these hours, they're already recorded." if volunteer != user_id else ''}"
 
         slack_misc.send_dm(
             slack_id=volunteer,
@@ -390,7 +390,7 @@ def add_hours_with_notifications(
     if successful and send_to_channel:
         user_list = ""
         for volunteer in successful:
-            user_list += f", <@{volunteer}> ({changes[volunteer]:,g}h)"
+            user_list += f", <@{volunteer}> ({h_format(changes[volunteer])})"
         user_list = user_list[2:]
 
         app.client.chat_postMessage(
@@ -668,3 +668,11 @@ def get_volunteer_badge_streaks(volunteer_hours: dict) -> dict:
         }
 
     return badge_streaks
+
+
+def h_format(hours: int | float) -> str:
+    """Format hours with 'h'/'m' suffix as appropriate"""
+
+    if hours > 1:
+        return f"{hours:,g}h"
+    return f"{round(int(hours * 60), 0):,g}m"

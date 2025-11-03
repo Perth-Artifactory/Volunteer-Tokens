@@ -483,7 +483,7 @@ def reward_tier(
             f"{emoji} {(current_hours if not achieved else required_hours):,g}/{required_hours}h"
         )
     if not achieved:
-        lines[-1] += f" - {required_hours - current_hours:,g}h to go!"
+        lines[-1] += f" - {hours.h_format(required_hours - current_hours)} to go!"
     lines.append(f"{reward_definition['description']}")
 
     block_list = block_formatters.inject_text(
@@ -965,7 +965,7 @@ def modal_user_statistics(
     stat_str = ""
     stat_str += f"*Total Hours Volunteered:* {total_hours:,g}h\n"
     if debt > 0:
-        stat_str += f"*Time Debt:* {debt:,g}h (This is the amount of volunteering time you owe to the organisation in exchange for things like tool training)\n"
+        stat_str += f"*Time Debt:* {hours.h_format(debt)} (This is the amount of volunteering time you owe to the organisation in exchange for things like tool training)\n"
     stat_str += f"*Hours Last Month:* {last_month_hours:,g}h\n"
     stat_str += f"*Hours This Month:* {this_month_hours:,g}h\n"
     if streak["current_streak"] == streak["longest_streak"]:
