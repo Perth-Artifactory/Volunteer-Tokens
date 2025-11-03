@@ -387,7 +387,9 @@ def add_hours_with_notifications(
             if current_debt > 0:
                 message += f" You now have a total time debt of {h_format(current_debt)}. Please remember to repay this debt by volunteering before undertaking further training."
         else:
-            message = f"{address} added {h_format(hours)} against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!{"\nThere's no need to add tokens to the tub for these hours, they're already recorded." if volunteer != user_id else ''}"
+            message = f"{address} added {h_format(hours)} against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!"
+            if user_id != volunteer:
+                message += "\nThere's no need to add tokens to the tub for these hours, they're already recorded."
 
         slack_misc.send_dm(
             slack_id=volunteer,
