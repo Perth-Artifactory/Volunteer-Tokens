@@ -712,7 +712,7 @@ def modal_bulk_add_hours() -> list[dict]:
 
 
 def modal_statistics(
-    volunteer_hours: dict, config: dict, tidyhq_cache: dict
+    volunteer_hours: dict, config: dict, tidyhq_cache: dict, graphs: bool = False
 ) -> list[dict]:
     """Generate a modal showing overall volunteer statistics."""
 
@@ -830,12 +830,20 @@ def modal_statistics(
         block_list, block_formatters.construct_rich_list(list_items)
     )
 
-    # Add chart
-    block_list = block_formatters.add_block(block_list, blocks.image)
-    block_list[-1]["image_url"] = chart.individual_hours_chart(
-        months=stats["hours_by_month"], cutoff_months=12
-    )
-    block_list[-1]["alt_text"] = "Volunteer hours by month chart"
+    if graphs:
+        # Add chart
+        block_list = block_formatters.add_block(block_list, blocks.image)
+        block_list[-1]["image_url"] = chart.individual_hours_chart(
+            months=stats["hours_by_month"], cutoff_months=12
+        )
+        block_list[-1]["alt_text"] = "Volunteer hours by month chart"
+    else:
+        # Add button to redeploy with graphs
+        block_list = block_formatters.add_block(block_list, blocks.actions)
+        block_list = block_formatters.add_element(block_list, blocks.button)
+        block_list[-1]["elements"][0]["text"]["text"] = "View with Graphs"
+        block_list[-1]["elements"][0]["action_id"] = "admin_statistics"
+        block_list[-1]["elements"][0]["value"] = "graphs"
 
     # Badge streak leaderboard
     block_list = block_formatters.add_block(block_list, blocks.divider)
@@ -931,7 +939,7 @@ def modal_statistics(
 
 
 def modal_user_statistics(
-    tidyhq_id: str, volunteer_hours: dict, header: bool = True
+    tidyhq_id: str, volunteer_hours: dict, header: bool = True, graphs: bool = False
 ) -> list[dict]:
     """Generate a modal showing overall volunteer statistics for a specific user."""
 
@@ -964,6 +972,11 @@ def modal_user_statistics(
     block_list = block_formatters.inject_text(
         block_list=block_list, text=strings.stats_explainer
     )
+    block_list = block_formatters.add_block(block_list, blocks.context)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text="...or since the system was implemented in September 2025!",
+    )
     block_list = block_formatters.add_block(block_list, blocks.divider)
 
     if not header:
@@ -992,12 +1005,25 @@ def modal_user_statistics(
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(block_list=block_list, text=stat_str)
 
-    # Add a chart showing hours by month
-    block_list = block_formatters.add_block(block_list, blocks.image)
+    if graphs:
+        # Add a chart showing hours by month
+        block_list = block_formatters.add_block(block_list, blocks.image)
 
-    block_list[-1]["alt_text"] = "Hours by month chart"
-    block_list[-1]["image_url"] = chart.individual_hours_chart(
-        months=hours_util.get_hours_by_month(tidyhq_id, volunteer_hours)
+        block_list[-1]["alt_text"] = "Hours by month chart"
+        block_list[-1]["image_url"] = chart.individual_hours_chart(
+            months=hours_util.get_hours_by_month(tidyhq_id, volunteer_hours)
+        )
+
+    return block_list
+
+
+def placeholder_modal() -> list:
+    """Returns the blocks for a placeholder loading modal"""
+
+    block_list = []
+    block_list = block_formatters.add_block(block_list, blocks.text)
+    block_list = block_formatters.inject_text(
+        block_list=block_list,
+        text="Loading... :loading-disc: ",
     )
-
     return block_list

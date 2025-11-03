@@ -384,13 +384,50 @@ def handle_debt_submission(ack: slack_ack, body: dict) -> None:
 def modal_admin_statistics(ack: slack_ack, body: dict) -> None:
     ack()
 
+    # Check if we're reopening to add graphs
+    if body["actions"][0]["value"] == "graphs":
+        # Give feedback for button push
+        view = slack_misc.loading_button(body=body)
+        app.client.views_update(view_id=body["view"]["id"], view=view)
+
+        # Generate the statistics blocks with graphs
+        block_list = block_formatters.modal_statistics(
+            volunteer_hours, config, tidyhq_cache, graphs=True
+        )
+
+        # Update the existing modal
+        app.client.views_update(
+            view_id=body["view"]["id"],
+            view={
+                "type": "modal",
+                "title": {"type": "plain_text", "text": "Volunteer Statistics"},
+                "close": {"type": "plain_text", "text": "Close"},
+                "blocks": block_list,
+            },
+        )
+        return
+
+    # Send a placeholder modal while we generate stats
+    block_list = block_formatters.placeholder_modal()
+    v = app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "title": {"type": "plain_text", "text": "Loading"},
+            "close": {"type": "plain_text", "text": "Close"},
+            "blocks": block_list,
+        },
+    )
+
     block_list = block_formatters.modal_statistics(
         volunteer_hours, config, tidyhq_cache
     )
 
     try:
-        app.client.views_open(
-            trigger_id=body["trigger_id"],
+        # Update the existing view
+
+        app.client.views_update(
+            view_id=v["view"]["id"],  # type: ignore
             view={
                 "type": "modal",
                 "title": {"type": "plain_text", "text": "Volunteer Statistics"},
@@ -408,16 +445,30 @@ def modal_admin_statistics(ack: slack_ack, body: dict) -> None:
 def modal_user_statistics(ack: slack_ack, body: dict) -> None:
     ack()
 
+    # Send a placeholder modal while we generate stats
+    block_list = block_formatters.placeholder_modal()
+    v = app.client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "title": {"type": "plain_text", "text": "Loading..."},
+            "close": {"type": "plain_text", "text": "Close"},
+            "blocks": block_list,
+        },
+    )
+
     # Get the tidyhq id from the button value
     tidyhq_id = body["actions"][0]["value"]
 
     block_list = block_formatters.modal_user_statistics(
         tidyhq_id=tidyhq_id,
         volunteer_hours=volunteer_hours,
+        graphs=True,
     )
 
-    app.client.views_open(
-        trigger_id=body["trigger_id"],
+    # Update the existing view
+    app.client.views_update(
+        view_id=v["view"]["id"],  # type: ignore
         view={
             "type": "modal",
             "title": {"type": "plain_text", "text": "Volunteering Stats"},
