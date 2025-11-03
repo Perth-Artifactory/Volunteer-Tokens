@@ -57,6 +57,17 @@ def get_total(tidyhq_id: int | str, volunteer_hours: dict) -> int:
     return total_hours
 
 
+def get_hours_by_month(tidyhq_id: int | str, volunteer_hours: dict) -> dict:
+    """Get the hours by month for a specified TidyHQ ID."""
+
+    tidyhq_id = str(tidyhq_id).strip()
+
+    if tidyhq_id not in volunteer_hours:
+        return {}
+
+    return volunteer_hours[tidyhq_id]["months"]
+
+
 def get_specific_month(
     tidyhq_id: int | str, volunteer_hours: dict, month: datetime
 ) -> int:

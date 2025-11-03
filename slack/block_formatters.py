@@ -5,7 +5,7 @@ from pprint import pprint
 
 from editable_resources import strings
 from slack import blocks, block_formatters
-from util import tidyhq, misc, hours
+from util import tidyhq, misc, hours, chart
 
 # Set up logging
 logger = logging.getLogger("slack.block_formatters")
@@ -830,6 +830,13 @@ def modal_statistics(
         block_list, block_formatters.construct_rich_list(list_items)
     )
 
+    # Add chart
+    block_list = block_formatters.add_block(block_list, blocks.image)
+    block_list[-1]["image_url"] = chart.individual_hours_chart(
+        months=stats["hours_by_month"], cutoff_months=12
+    )
+    block_list[-1]["alt_text"] = "Volunteer hours by month chart"
+
     # Badge streak leaderboard
     block_list = block_formatters.add_block(block_list, blocks.divider)
     block_list = block_formatters.add_block(block_list, blocks.header)
@@ -984,5 +991,13 @@ def modal_user_statistics(
 
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(block_list=block_list, text=stat_str)
+
+    # Add a chart showing hours by month
+    block_list = block_formatters.add_block(block_list, blocks.image)
+
+    block_list[-1]["alt_text"] = "Hours by month chart"
+    block_list[-1]["image_url"] = chart.individual_hours_chart(
+        months=hours_util.get_hours_by_month(tidyhq_id, volunteer_hours)
+    )
 
     return block_list
