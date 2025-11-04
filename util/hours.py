@@ -377,7 +377,7 @@ def add_hours_with_notifications(
         note_add = f' with the note "{note}"' if note else ""
 
         # No need to @ the person if they're the one adding time
-        address = "<@{user_id}>" if volunteer != user_id else "You"
+        address = f"<@{user_id}>" if volunteer != user_id else "You"
 
         if debt:
             message = f"{address} added {h_format(hours)} of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
