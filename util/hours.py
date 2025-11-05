@@ -686,6 +686,6 @@ def get_volunteer_badge_streaks(volunteer_hours: dict) -> dict:
 def h_format(hours: int | float) -> str:
     """Format hours with 'h'/'m' suffix as appropriate"""
 
-    if hours > 1:
+    if hours >= 1:
         return f"{hours:,g}h"
     return f"{round(int(hours * 60), 0):,g}m"
