@@ -198,8 +198,13 @@ def add_hours_with_notifications(
     # For anything older than that we append the year to the notifications instead of just month
 
     year_str = ""
+    month_str = ""
     if volunteer_date < datetime.now() - timedelta(days=122):
         year_str = f" ({volunteer_date.year})"
+
+    # Only add month if not current month
+    if datetime.now().month != volunteer_date.month:
+        month_str = f" for {volunteer_date.strftime('%B')}"
 
     for volunteer in changes:
         hours = changes[volunteer]
@@ -380,14 +385,14 @@ def add_hours_with_notifications(
         address = f"<@{user_id}>" if volunteer != user_id else "You"
 
         if debt:
-            message = f"{address} added {h_format(hours)} of time debt against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}."
+            message = f"{address} added {h_format(hours)} of time debt against your profile{month_str}{year_str}{note_add}."
             current_debt = get_debt(
                 tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
             )
             if current_debt > 0:
                 message += f" You now have a total time debt of {h_format(current_debt)}. Please remember to repay this debt by volunteering before undertaking further training."
         else:
-            message = f"{address} added {h_format(hours)} against your profile for {volunteer_date.strftime('%B')}{year_str}{note_add}. Thank you for helping out!"
+            message = f"{address} added {h_format(hours)} against your profile{month_str}{year_str}{note_add}. Thank you for helping out!"
             if user_id != volunteer:
                 message += "\nThere's no need to add tokens to the tub for these hours, they're already recorded."
 
@@ -408,7 +413,7 @@ def add_hours_with_notifications(
 
         app.client.chat_postMessage(
             channel=config["slack"]["admin_channel"],
-            text=f"{':chart_with_downwards_trend:' if debt else ':chart_with_upwards_trend:'} <@{user_id}> added {'debt' if debt else 'hours'} for {volunteer_date.strftime('%B')}{year_str}: {user_list}{note_add}",
+            text=f"{':chart_with_downwards_trend:' if debt else ':chart_with_upwards_trend:'} <@{user_id}> added {'debt' if debt else 'hours'}{month_str}{year_str}: {user_list}{note_add}",
         )
 
     if failed:
