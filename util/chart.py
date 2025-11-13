@@ -86,6 +86,9 @@ def individual_hours_chart(
             display: false,
             gridLines: {
             display: false,
+            },
+            ticks: {
+                beginAtZero: true,
             }
         }]
         },
