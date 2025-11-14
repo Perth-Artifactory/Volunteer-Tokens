@@ -740,7 +740,7 @@ def modal_statistics(
 
     # Overall summary
     summary_stats = []
-    summary_stats.append([["Total Hours", "bold"], f": {stats['total_hours']:,}h\n"])
+    summary_stats.append([["Total Hours", "bold"], f": {stats['total_hours']:,g}h\n"])
     summary_stats.append(
         [["Total Volunteers", "bold"], f": {stats['total_volunteers']}\n"]
     )
