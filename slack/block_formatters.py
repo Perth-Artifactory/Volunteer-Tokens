@@ -278,7 +278,6 @@ def app_home(
     modal_version: bool = False,
 ) -> list:
     """Generate the blocks for the app home view for a specified user and return it as a list of blocks."""
-    # Check if the user has a Taiga account
 
     block_list = []
     block_list = block_formatters.add_block(block_list, blocks.header)
@@ -286,168 +285,19 @@ def app_home(
         block_list=block_list, text=strings.header
     )
 
-    # Get the TidyHQ ID for the user
-    tidyhq_id = tidyhq.map_slack_to_tidyhq(
-        tidyhq_cache=tidyhq_cache, slack_id=user_id, config=config
-    )
-
-    if not tidyhq_id:
-        block_list = block_formatters.add_block(block_list, blocks.text)
-        block_list = block_formatters.inject_text(
-            block_list=block_list, text=strings.unrecognised
-        )
-
-        return block_list
-
     block_list = block_formatters.add_block(block_list, blocks.text)
     block_list = block_formatters.inject_text(
         block_list=block_list,
         text=strings.explainer,
     )
 
-    # Add an accessory button to view statistics
+    # Add an accessory button to go to the Member Portal
     block_list[-1]["accessory"] = copy(blocks.button)
-    block_list[-1]["accessory"]["text"]["text"] = "View Statistics"
-    block_list[-1]["accessory"]["action_id"] = "user_statistics"
-    block_list[-1]["accessory"]["value"] = tidyhq_id
-
-    # Get the user's total hours
-    total_hours = hours.get_total(tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours)
-
-    # Get the user's hours for last month
-    last_month_hours = hours.get_last_month(
-        tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
-    )
-    this_month_hours = hours.get_current_month(
-        tidyhq_id=tidyhq_id, volunteer_hours=volunteer_hours
-    )
-
-    admin = tidyhq.check_for_groups(
-        contact_id=tidyhq_id,
-        groups=config["tidyhq"]["group_ids"]["admin"],
-        tidyhq_cache=tidyhq_cache,
-    )  # type: ignore
-
-    if admin:
-        block_list = block_formatters.add_block(block_list, blocks.header)
-        block_list = block_formatters.inject_text(
-            block_list=block_list, text="Admin tools"
-        )
-        block_list = block_formatters.add_block(block_list, blocks.text)
-        block_list = block_formatters.inject_text(
-            block_list=block_list,
-            text=strings.admin_explainer,
-        )
-
-        admin_buttons = []
-        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
-        admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="Add volunteer hours"
-        )
-        admin_buttons[-1]["action_id"] = "add_hours"
-        admin_buttons[-1]["value"] = tidyhq_id
-        admin_buttons[-1]["style"] = "primary"
-
-        # Add debt button
-        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
-        admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="Add time debt"
-        )
-        admin_buttons[-1]["action_id"] = "add_debt"
-        admin_buttons[-1]["value"] = tidyhq_id
-        admin_buttons[-1]["style"] = "danger"
-
-        # Add bulk add button
-        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
-        admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="Bulk add hours"
-        )
-        admin_buttons[-1]["action_id"] = "bulk_add_hours"
-        admin_buttons[-1]["value"] = tidyhq_id
-
-        # Add self log button
-        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
-        admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="Log my own hours"
-        )
-        admin_buttons[-1]["action_id"] = "self_log"
-        admin_buttons[-1]["value"] = tidyhq_id
-
-        # Add "View as user" button
-        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
-        admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="View as user"
-        )
-        admin_buttons[-1]["action_id"] = "view_as_user"
-        admin_buttons[-1]["value"] = tidyhq_id
-
-        # Add "View Statistics" button
-        admin_buttons = block_formatters.add_block(admin_buttons, blocks.button)
-        admin_buttons = block_formatters.inject_text(
-            block_list=admin_buttons, text="Overall Statistics"
-        )
-        admin_buttons[-1]["action_id"] = "admin_statistics"
-        admin_buttons[-1]["value"] = tidyhq_id
-
-        block_list = block_formatters.add_block(block_list, blocks.actions)
-        block_list[-1]["elements"] = admin_buttons
-
-    block_list = block_formatters.add_block(block_list, blocks.divider)
-
-    # For modal version, discard everything before rewards
-    if modal_version:
-        block_list = []
-
-    block_list = block_formatters.add_block(block_list, blocks.header)
-    block_list = block_formatters.inject_text(
-        block_list=block_list,
-        text=f"Upcoming monthly rewards ({datetime.now().strftime('%B')})",
-    )
-
-    for reward in rewards["monthly"]:
-        block_list += reward_tier(
-            reward_definition=rewards["monthly"][reward],
-            required_hours=reward,
-            current_hours=this_month_hours,
-        )
-
-    block_list = block_formatters.add_block(block_list, blocks.header)
-    block_list = block_formatters.inject_text(
-        block_list=block_list,
-        text=f"Active monthly rewards (from {(datetime.now() - timedelta(days=30)).strftime('%B')}) - ({last_month_hours}h)",
-    )
-
-    current_count = 0
-    for reward in rewards["monthly"]:
-        block = reward_tier(
-            reward_definition=rewards["monthly"][reward],
-            required_hours=reward,
-            current_hours=last_month_hours,
-            active=True,
-        )
-        if block:
-            block_list += block
-            current_count += 1
-    if current_count == 0:
-        block_list = block_formatters.add_block(block_list, blocks.text)
-        block_list = block_formatters.inject_text(
-            block_list=block_list,
-            text=strings.no_active_rewards,
-        )
-
-    block_list = block_formatters.add_block(block_list, blocks.divider)
-
-    block_list = block_formatters.add_block(block_list, blocks.header)
-    block_list = block_formatters.inject_text(
-        block_list=block_list, text="Lifetime rewards"
-    )
-
-    for reward in rewards["cumulative"]:
-        block_list += reward_tier(
-            reward_definition=rewards["cumulative"][reward],
-            required_hours=reward,
-            current_hours=total_hours,
-        )
+    block_list[-1]["accessory"]["text"]["text"] = "Go to Member Portal"
+    block_list[-1]["accessory"]["action_id"] = "go_to_member_portal"
+    block_list[-1]["accessory"]["value"] = user_id
+    block_list[-1]["accessory"]["style"] = "primary"
+    block_list[-1]["accessory"]["url"] = "https://members.artifactory.org.au/tokens"
 
     return block_list
 

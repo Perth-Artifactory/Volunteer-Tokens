@@ -641,6 +641,12 @@ def handle_training_tracker_messages(ack, body: dict) -> None:
             )
 
 
+# Ignore link button clicks
+@app.action("go_to_member_portal")
+def go_to_member_portal(ack: slack_ack, body: dict) -> None:
+    ack()
+
+
 # The cron mode renders the app home for every user in the workspace and resets filters
 if "--cron" in sys.argv:
     # Update homes for all slack users
